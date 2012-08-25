@@ -1,0 +1,7 @@
+<routes>
+   <route>
+      <url>/hello</url>
+      <component>SampleComponent#sayHello</component>
+   </route>      
+</routes>    
+

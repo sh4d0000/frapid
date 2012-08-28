@@ -1,0 +1,15 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-undeploy')
+def opt = cli.parse(args)
+
+if ( opt.h ) {
+   cli.usage()
+   return
+}
+
+
+println("Deploying project...")
+def frapid = new Frapid()
+frapid.undeploy()
+println("Project deployed")

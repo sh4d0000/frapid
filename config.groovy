@@ -15,6 +15,7 @@ frapi {
    config = custom + File.separator + "Config"
    action = custom + File.separator + "Action"
    frapid = custom + File.separator + "frapid"
+   main_controller = home + File.separator + "/src/frapi/library/Frapi/Controller"
 
 }
 

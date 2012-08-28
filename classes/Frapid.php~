@@ -11,13 +11,6 @@ class Frapid {
         return $uri;
     }
 
-    public function getQueryString()  {
-
-        $query = explode( '.',$_SERVER['QUERY_STRING']);
-        return $query[0];
-    }
-
-
     public function getRouteMap()  {
 
         $routeMap = array();
@@ -49,8 +42,6 @@ class Frapid {
            foreach($routeMap as $uriRoute=>$path ) {
         
 	      $params = array();
-	      parse_str( $this->getQueryString(), $params );
-
               $uri_ = array_filter( explode('/', $uri ) );
               $uriRoute = array_filter( explode('/', $uriRoute ) );
 

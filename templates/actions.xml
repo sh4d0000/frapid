@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<frapi-config>
+ <actions>
+  <action>
+   <name>Frontcontroller</name>
+   <enabled>1</enabled>
+   <public>1</public>
+   <description></description>
+   <route>/</route>
+   <parameters></parameters>
+   <hash>c822427bc44312cdb99e939f021af8c57974e07b</hash>
+  </action>
+ </actions>
+</frapi-config>

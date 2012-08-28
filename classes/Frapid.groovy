@@ -70,8 +70,85 @@ class Frapid {
 
    def deploy() {
 
-      undeploy()
-      Files.createDirectory( Paths.get( config.frapi.frapid ) ) 
+     undeploy()
+     Files.createDirectory( Paths.get( config.frapi.frapid ) ) 
+
+     def path = Paths.get( config.frapid.classes + File.separator + "Frapid.php"  )
+     def destinationFolder = Paths.get( config.frapi.frapid + File.separator + "Frapid.php" )
+     Files.copy( path, destinationFolder, REPLACE_EXISTING )
+
+     path = Paths.get( "config/routes.xml"  )
+     destinationFolder = Paths.get( config.frapi.frapid + File.separator + "routes.xml" )
+     Files.copy( path, destinationFolder, REPLACE_EXISTING )
+
+     new File("components").eachFileMatch( ~/.*\.php/ ) { component ->
+
+        path = Paths.get( component.absolutePath )
+        destinationFolder = Paths.get( config.frapi.frapid + File.separator + component.name )
+	Files.copy( path, destinationFolder, REPLACE_EXISTING )
+
+     }
+
+
+   }
+
+   def undeploy() {
+
+      def frapidDir = new File( config.frapi.frapid )
+      
+      if( frapidDir.exists()  ) {
+
+         frapidDir.eachFile { component ->
+             Files.delete Paths.get( component.absolutePath )
+         } 
+
+
+         Files.delete( Paths.get( config.frapi.frapid )  )
+
+      }
+
+   }
+
+   def config() {
+
+     // sostituisci main action
+     def mainAction = Paths.get( config.frapid.templates + File.separator + "Main.php" )
+     def destinationFolder = Paths.get( config.frapi.main_controller + File.separator + "Main.php" )
+     Files.copy( mainAction, destinationFolder, REPLACE_EXISTING )
+
+     // moving front controller 
+     def frontController = Paths.get( config.frapid.templates + File.separator + "Frontcontroller.php"  )
+     destinationFolder = Paths.get( config.frapi.action + File.separator + "Frontcontroller.php" )
+     Files.copy( frontController, destinationFolder, REPLACE_EXISTING )
+
+     // actions.xml
+     def actionsXML = Paths.get( config.frapid.templates + File.separator + "actions.xml"  )
+     destinationFolder = Paths.get( config.frapi.config + File.separator + "actions.xml" )
+     Files.copy( actionsXML, destinationFolder, REPLACE_EXISTING )
+
+     new File( config.frapi.custom + File.separator + "AllFiles.php" ) << '''
+$files = glob('../custom/frapid/*.php');
+foreach($files as $file) {
+   require_once $file;
+}
+'''
+
+   }
+
+   def unconfig() {
+
+     // sostituisci main action
+     def mainAction = Paths.get( config.frapid.templates + File.separator + "Main_bk.php" )
+     def destinationFolder = Paths.get( config.frapi.main_controller + File.separator + "Main.php" )
+     Files.copy( mainAction, destinationFolder, REPLACE_EXISTING )
+
+   }
+
+   def camelize(String self) {
+      self.split("_").collect() { it.substring(0, 1).toUpperCase() + it.substring(1, it.length()) }.join()
+   }
+
+   def buildActions() {
 
       // crea actions.xml e action cloni
       def routes = new XmlSlurper().parse("config/routes.xml")
@@ -104,54 +181,17 @@ class Frapid {
      writer.close()
 
      names.each { generate( 'front_controller', it ) }
-
-
-     def path = Paths.get( config.frapid.classes + File.separator + "Frapid.php"  )
-     def destinationFolder = Paths.get( config.frapi.frapid + File.separator + "Frapid.php" )
-     Files.copy( path, destinationFolder, REPLACE_EXISTING )
-
-     path = Paths.get( "config/routes.xml"  )
-     destinationFolder = Paths.get( config.frapi.frapid + File.separator + "routes.xml" )
-     Files.copy( path, destinationFolder, REPLACE_EXISTING )
-
-     new File("components").eachFileMatch( ~/.*\.php/ ) { component ->
-
-        path = Paths.get( component.absolutePath )
-        destinationFolder = Paths.get( config.frapi.frapid + File.separator + component.name )
-	Files.copy( path, destinationFolder, REPLACE_EXISTING )
-
-     }
      
+      /*
 
-
-   }
-
-   def undeploy() {
-
-      def frapidDir = new File( config.frapi.frapid )
-      
-      if( frapidDir.exists()  ) {
-
-         frapidDir.eachFile { component ->
-             Files.delete Paths.get( component.absolutePath )
-         } 
-
-
-         Files.delete( Paths.get( config.frapi.frapid )  )
-
-      }
-
-
+UNDEPLOY
       new File( config.frapi.action ).eachFileMatch( ~/.*\.php/ ) { component ->
          Files.delete Paths.get( component.absolutePath )
       } 
 
+      */
+
+
    }
-
-
-def camelize(String self) {
-   self.split("_").collect() { it.substring(0, 1).toUpperCase() + it.substring(1, it.length()) }.join()
-}
-
 
 }

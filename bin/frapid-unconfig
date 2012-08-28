@@ -1,0 +1,15 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-unconfig')
+def opt = cli.parse(args)
+
+if ( opt.h ) {
+   cli.usage()
+   return
+}
+
+
+println("Unconfiguring Frapi...")
+def frapid = new Frapid()
+frapid.unconfig()
+println("Frapi unconfigurated")

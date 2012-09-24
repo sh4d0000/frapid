@@ -1,0 +1,16 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-generate-keys projectPath')
+def opt = cli.parse(args)
+
+if ( opt.h || opt.arguments().isEmpty() ) {
+   cli.usage()
+   return
+}
+
+def path = opt.arguments()[0] ? opt.arguments()[0] : "."
+
+println("Generating keys...")
+def frapid = new Frapid()
+frapid.generateKeys( path )
+println("Keys genarated")

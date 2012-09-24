@@ -1,0 +1,22 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-create -p"." file')
+
+cli.p( longOpt: 'path', 'path for the unpacked file')
+def opt = cli.parse(args)
+
+if ( opt.h || opt.arguments().isEmpty() ) {
+   cli.usage()
+   return
+}
+
+def path = "."
+
+if( opt.p ) {
+    path = opt.p
+}
+
+println("Unpacking project...")
+def frapid = new Frapid()
+frapid.unpack( opt.arguments()[0], path )
+println("Project unpacked")

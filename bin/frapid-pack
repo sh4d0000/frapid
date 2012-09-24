@@ -1,0 +1,16 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-pack projectRoot')
+def opt = cli.parse(args)
+
+if ( opt.h ) {
+   cli.usage()
+   return
+}
+
+def path = opt.arguments()[0] ? opt.arguments()[0] : "."
+
+println("Packing project...")
+def frapid = new Frapid()
+frapid.pack( path )
+println("Project created")

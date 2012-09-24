@@ -1,6 +1,7 @@
 import java.nio.file.Paths 
 import java.nio.file.Files
 import groovy.xml.MarkupBuilder
+import java.security.*
 import static java.nio.file.StandardCopyOption.*
 
 class Frapid {
@@ -9,11 +10,29 @@ class Frapid {
    
    def Frapid() {
 
-      dirs = ["components", "lib", "config", "tmp"];
+      dirs = ["components", "lib", "config", "tmp", "media", "bin"];
 
       def frapidPath = System.getenv()["FRAPID_HOME"]
       config = new ConfigSlurper().parse(new File("${frapidPath}/config.groovy").toURL())
    }
+
+   def generateKeys( path = config.frapid.home ) {
+	
+      def keyGen = KeyPairGenerator.getInstance("DSA", "SUN")
+      keyGen.initialize(1024, SecureRandom.getInstance("SHA1PRNG", "SUN") );
+      
+      def keyPair = keyGen.generateKeyPair();
+      def privateKey = keyPair.getPrivate();
+      def publicKey = keyPair.getPublic();
+
+      def pubKeyPath = Paths.get( path + File.separator + "public.key")
+      Files.write( pubKeyPath, publicKey.encoded  )
+
+      def privKeyPath = Paths.get( path + File.separator + "private.key")
+      Files.write( privKeyPath, privateKey.encoded  )
+
+   }
+
 
    def createProject( name, path = "." ) {
 
@@ -26,10 +45,30 @@ class Frapid {
       // create routes.xml
       def routesXml = Paths.get( config.frapid.templates + File.separator + "routes.xml" )
       def configDir = Paths.get( projectRoot + File.separator + "config/routes.xml" )
-      def component = Files.copy( routesXml, configDir )
-   
+      Files.copy( routesXml, configDir )
+
+      // create deploy.xml
+      def deployXml = Paths.get( config.frapid.templates + File.separator + "deploy.xml" )
+      def deployDir = Paths.get( projectRoot + File.separator + "config/deploy.xml" )
+      def file = deployXml.toFile()
+      file.write( file.text.replaceAll("_name_", name) )
+      Files.copy( deployXml, deployDir )
+     
+      // copy img
+      def img = Paths.get( config.frapid.templates + File.separator + "default.jpg" )
+      def mediaDir = Paths.get( projectRoot + File.separator + "media/default.jpg" )
+      Files.copy( img, mediaDir )
+    
 
       generate( "business_component", "SampleComponent", projectRoot )
+      
+      if( Files.notExists( Paths.get( config.frapid.home + File.separator + "public.key" )) ||
+          Files.notExists( Paths.get( config.frapid.home + File.separator + "private.key")) 
+      ) {
+
+         generateKeys() 
+
+      }
 
     
    }
@@ -108,6 +147,28 @@ class Frapid {
       }
 
    }
+
+   def pack( path = "." ) {
+
+      def app = new XmlSlurper().parse("config/deploy.xml")
+      def ant = new AntBuilder()
+
+      def archivePath = Paths.get "${path}/bin/${app.name}.tar.gz" 
+      if ( Files.exists( archivePath) ) Files.delete archivePath 
+      ant.tar( basedir: path, destFile: archivePath, compression: "gzip" )
+
+   }
+
+   def unpack( file, path = "." ){
+
+      def app = new XmlSlurper().parse("../config/deploy.xml")
+      def ant = new AntBuilder()
+      ant.untar( src: file, dest: "${path}/${app.name}", overwrite: true, compression: "gzip" )
+ 
+   }
+
+   def publish(){}
+
 
    def config() {
 

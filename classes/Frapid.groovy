@@ -54,6 +54,11 @@ class Frapid {
       file.write( file.text.replaceAll("_name_", name) )
       Files.copy( deployXml, deployDir )
      
+      // create .frapid
+      def frapidCheckFile = Paths.get( config.frapid.templates + File.separator + ".frapid" )
+      def projectRootDir = Paths.get( projectRoot + File.separator + ".frapid" )
+      Files.copy( frapidCheckFile, projectRootDir )
+
       // copy img
       def img = Paths.get( config.frapid.templates + File.separator + "default.jpg" )
       def mediaDir = Paths.get( projectRoot + File.separator + "media/default.jpg" )
@@ -150,12 +155,15 @@ class Frapid {
 
    def pack( path = "." ) {
 
-      def app = new XmlSlurper().parse("config/deploy.xml")
+      path = getProjectRoot path
+      println "path: " + path
+
+      def app = new XmlSlurper().parse( path.resolve( "config/deploy.xml").toString() )
       def ant = new AntBuilder()
 
-      def archivePath = Paths.get "${path}/bin/${app.name}.tar.gz" 
+      def archivePath = path.resolve( "bin/${app.name}.tar.gz" ) 
       if ( Files.exists( archivePath) ) Files.delete archivePath 
-      ant.tar( basedir: path, destFile: archivePath, compression: "gzip" )
+      ant.tar( basedir: path , destFile: archivePath, compression: "gzip" )
 
    }
 
@@ -207,6 +215,20 @@ foreach($files as $file) {
 
    def camelize(String self) {
       self.split("_").collect() { it.substring(0, 1).toUpperCase() + it.substring(1, it.length()) }.join()
+   }
+
+   def getProjectRoot( path ) {
+      
+      path = Paths.get( path ).toRealPath()
+
+      if( !Files.isDirectory( path ) ) throw new IllegalArgumentException( "Invalid Path, not a directory " )
+
+      while ( Files.notExists( path.resolve(".frapid") ) ) {
+         if( !path.parent ) throw new IllegalArgumentException( "No Frapid project found" )
+         path = path.parent
+      }
+
+      return path
    }
 
    def buildActions() {

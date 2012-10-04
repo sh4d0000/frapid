@@ -1,5 +1,20 @@
 <?php
+class RoutesXmlFilter extends RecursiveFilterIterator {
+   public function __construct($iterator) {
+     parent::__construct($iterator);
+   }
+
+   public function accept() {
+     return $this->hasChildren() || ($this->current()->isFile() && "routes.xml" == $this->getFilename());
+   }
+
+   public function __toString() {
+     return $this->current()->getFilename();
+   }
+}
+
 class Frapid {
+  
 
     public function getUri()  {
 
@@ -21,17 +36,25 @@ class Frapid {
     public function getRouteMap()  {
 
         $routeMap = array();
+        $it = new RecursiveDirectoryIterator( CUSTOM_PATH . DIRECTORY_SEPARATOR . 'frapid' ); 
+        $it = new RoutesXmlFilter($it);
 
-        $string = file_get_contents("../custom/frapid/routes.xml");
-        $routes = $this->xmlstr_to_array($string);
+        foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
+          echo '--->'.$fileInfo."\n";
+           $string = file_get_contents( $fileInfo->getPathname() );
+           $routesConfig = $this->xmlstr_to_array($string);
+           $root = $routesConfig["root"];
 
-        foreach ($routes as $route){
-           $url = $route["url"];
+           foreach ($routesConfig["routes"] as $route){
+              $url = $route["url"];
 
-           if( substr( $url, -1) != '/' ) $url = $url.'/';
-           $routeMap[ $url ] = $route["component"];
+              if( substr( $url, -1) != '/' ) $url = $url.'/';
+              $routeMap[ $root . $url ] = $route["component"];
+           }
+ 
         }
 
+        var_dump($routeMap);
         return $routeMap;
     }
 

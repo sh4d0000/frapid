@@ -1,7 +1,10 @@
-<routes>
-   <route>
+<routes-config>
+  <root>/app</root>
+  <routes>
+    <route>
       <url>/hello</url>
       <component>SampleComponent#sayHello</component>
-   </route>      
-</routes>    
+    </route>      
+  </routes>    
+</routes-config>
 

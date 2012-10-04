@@ -80,75 +80,74 @@ class Frapid {
 
    def generate( type, name, path = "." ) {
 
+      path = getProjectRoot path
+
       if( type == "business_component" ) {
 
          def template = Paths.get( config.frapid.templates + File.separator + camelize(type) + ".php" )
          def destinationFolder = Paths.get( config.frapid.temp + File.separator + "${name}.php" )
-	 def component = Files.copy( template, destinationFolder, REPLACE_EXISTING )
-         destinationFolder = Paths.get( path + "/components/${name}.php" )
+    	 def component = Files.copy( template, destinationFolder, REPLACE_EXISTING )
+         destinationFolder = path.resolve( "components/${name}.php" )
          def componentFile = component.toFile()
 
          componentFile.write( componentFile.text.replaceAll("_${type}_", name) )
-	 Files.move( component, destinationFolder, REPLACE_EXISTING )
-
-         /*
-           TODO attualmente il comando è eseguibile solo dalla root di progetto
-         */
+    	 Files.move( component, destinationFolder, REPLACE_EXISTING )
 
 
       } else if( type == "front_controller" ) {
 
          def template = Paths.get( config.frapid.templates + File.separator + camelize(type) + ".php" )
          def destinationFolder = Paths.get( config.frapid.temp + File.separator + "${name}.php" )
-	 def action = Files.copy( template, destinationFolder, REPLACE_EXISTING )
+    	 def action = Files.copy( template, destinationFolder, REPLACE_EXISTING )
          destinationFolder = Paths.get( config.frapi.action+ File.separator + "${name}.php" )
          def actionFile = action.toFile()
 
          actionFile.write( actionFile.text.replaceAll("_${type}_", name) )
-	 Files.move( action, destinationFolder, REPLACE_EXISTING )
-
+    	 Files.move( action, destinationFolder, REPLACE_EXISTING )
 
       }
 
    }
 
-   def deploy() {
+   def deploy( projectPath ) {
 
-     undeploy()
-     Files.createDirectory( Paths.get( config.frapi.frapid ) ) 
+     undeploy( projectPath )
+     
+     def projectRoot = getProjectRoot projectPath
+     def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
 
-     def path = Paths.get( config.frapid.classes + File.separator + "Frapid.php"  )
-     def destinationFolder = Paths.get( config.frapi.frapid + File.separator + "Frapid.php" )
+     def deployDir = Paths.get( config.frapi.frapid + File.separator + app.name )
+     Files.createDirectory( deployDir ) 
+     println "deploy dir: " + deployDir.toString()
+
+     def path = projectRoot.resolve( "config/routes.xml" ) 
+     def destinationFolder = deployDir.resolve( "routes.xml" )
      Files.copy( path, destinationFolder, REPLACE_EXISTING )
 
-     path = Paths.get( "config/routes.xml"  )
-     destinationFolder = Paths.get( config.frapi.frapid + File.separator + "routes.xml" )
-     Files.copy( path, destinationFolder, REPLACE_EXISTING )
-
-     new File("components").eachFileMatch( ~/.*\.php/ ) { component ->
+     def componentsDir = projectRoot.resolve("components").toFile()
+     componentsDir.eachFileMatch( ~/.*\.php/ ) { component ->
 
         path = Paths.get( component.absolutePath )
-        destinationFolder = Paths.get( config.frapi.frapid + File.separator + component.name )
-	Files.copy( path, destinationFolder, REPLACE_EXISTING )
+        destinationFolder = deployDir.resolve( component.name ) 
+	    Files.copy( path, destinationFolder, REPLACE_EXISTING )
 
      }
 
 
    }
 
-   def undeploy() {
+   def undeploy( projectPath ) {
 
-      def frapidDir = new File( config.frapi.frapid )
+      def projectRoot = getProjectRoot projectPath
+      def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
+      def deployDir = Paths.get( config.frapi.frapid + File.separator + app.name ).toFile()
       
-      if( frapidDir.exists()  ) {
-
-         frapidDir.eachFile { component ->
-             Files.delete Paths.get( component.absolutePath )
+      if( deployDir.exists()  ) {
+         deployDir.eachFile { component ->
+             component.delete()
          } 
 
-
-         Files.delete( Paths.get( config.frapi.frapid )  )
-
+         deployDir.delete()
       }
 
    }
@@ -156,7 +155,6 @@ class Frapid {
    def pack( path = "." ) {
 
       path = getProjectRoot path
-      println "path: " + path
 
       def app = new XmlSlurper().parse( path.resolve( "config/deploy.xml").toString() )
       def ant = new AntBuilder()
@@ -196,11 +194,21 @@ class Frapid {
      Files.copy( actionsXML, destinationFolder, REPLACE_EXISTING )
 
      new File( config.frapi.custom + File.separator + "AllFiles.php" ) << '''
-$files = glob('../custom/frapid/*.php');
-foreach($files as $file) {
-   require_once $file;
+$it = new RecursiveDirectoryIterator( CUSTOM_PATH . DIRECTORY_SEPARATOR . 'frapid' ); 
+
+foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
+  if($fileInfo->getExtension() == "php") {
+     require_once $fileInfo->getPathname();
+  }
 }
 '''
+
+     // creating Frapid dir in Frapi
+     Files.createDirectory( Paths.get( config.frapi.frapid ) ) 
+
+     def path = Paths.get( config.frapid.classes + File.separator + "Frapid.php"  )
+     destinationFolder = Paths.get( config.frapi.frapid + File.separator + "Frapid.php" )
+     Files.copy( path, destinationFolder, REPLACE_EXISTING )
 
    }
 
@@ -211,6 +219,16 @@ foreach($files as $file) {
      def destinationFolder = Paths.get( config.frapi.main_controller + File.separator + "Main.php" )
      Files.copy( mainAction, destinationFolder, REPLACE_EXISTING )
 
+     // deleting frapid dir in Frapi
+     def frapidDir = new File( config.frapi.frapid )
+      
+     if( frapidDir.exists()  ) {
+        frapidDir.eachFile { component ->
+            Files.delete Paths.get( component.absolutePath )
+        } 
+
+        Files.delete( Paths.get( config.frapi.frapid )  )
+     }
    }
 
    def camelize(String self) {

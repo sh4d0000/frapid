@@ -1,0 +1,17 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-verify-signature /path/to/pack /path/to/signature /path/to/publicKey')
+
+def opt = cli.parse(args)
+
+if ( opt.h || opt.arguments().size() < 2 ) {
+   cli.usage()
+   return
+}
+
+
+println("Verifying pack...")
+def frapid = new Frapid()
+def result = opt.arguments()[2] ? frapid.verifyPack( opt.arguments()[0], opt.arguments()[1], opt.arguments()[2] ) :
+    frapid.verifyPack( opt.arguments()[0], opt.arguments()[1] )
+println("result: " + result)

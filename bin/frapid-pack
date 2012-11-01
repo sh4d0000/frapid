@@ -13,4 +13,4 @@ def path = opt.arguments()[0] ? opt.arguments()[0] : "."
 println("Packing project...")
 def frapid = new Frapid()
 frapid.pack( path )
-println("Project created")
+println("Project packed")

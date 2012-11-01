@@ -19,3 +19,10 @@ frapi {
 
 }
 
+database {
+
+     url = "localhost:3306/drupal7"
+     username = "drupal7"
+     password = "drupal7"
+
+}

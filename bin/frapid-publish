@@ -1,0 +1,13 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-publish projectPack')
+def opt = cli.parse(args)
+
+if ( opt.h || !opt.arguments()[0] ) {
+   cli.usage()
+   return
+}
+
+def frapid = new Frapid()
+def output = frapid.publish( opt.arguments()[0] )
+println output

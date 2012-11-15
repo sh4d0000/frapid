@@ -6,17 +6,32 @@ frapid {
    classes = home + File.separator + "classes"
 
 }
-  
-frapi {
 
-   home = System.getenv()["FRAPI_PATH"]
-   custom = home + File.separator + "src/frapi/custom"
-   model = custom + File.separator + "Model"
-   config = custom + File.separator + "Config"
-   action = custom + File.separator + "Action"
-   frapid = custom + File.separator + "frapid"
-   main_controller = home + File.separator + "/src/frapi/library/Frapi/Controller"
+envs {
+   dev {
+      type = 'local'
+      frapi {
 
+         home = System.getenv()["FRAPI_PATH"]
+         custom = home + File.separator + "src/frapi/custom"
+         model = custom + File.separator + "Model"
+         config = custom + File.separator + "Config"
+         action = custom + File.separator + "Action"
+         frapid = custom + File.separator + "frapid"
+         main_controller = home + File.separator + "/src/frapi/library/Frapi/Controller"
+
+      }
+   }
+
+   test {
+      type = 'remote'
+      uri = 'localhost:4444'
+   }
+
+   prod {
+      type = 'remote'
+      uri = 'localhost:4444'
+   }
 }
 
 database {

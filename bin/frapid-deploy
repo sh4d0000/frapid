@@ -1,6 +1,7 @@
 #!/usr/bin/env groovy 
 
-def cli = new CliBuilder(usage: 'frapid-deploy projectPath')
+def cli = new CliBuilder(usage: 'frapid-deploy projectPath prod')
+
 def opt = cli.parse(args)
 
 if ( opt.h ) {
@@ -9,8 +10,9 @@ if ( opt.h ) {
 }
 
 def path = opt.arguments()[0] ? opt.arguments()[0] : "."
+def env = opt.arguments()[1] ? opt.arguments()[1] : "dev"
 
 println("Deploying project...")
 def frapid = new Frapid()
-frapid.deploy( path )
+frapid.deploy( path, env )
 println("Project deployed")

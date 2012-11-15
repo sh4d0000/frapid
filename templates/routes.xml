@@ -1,5 +1,5 @@
 <routes-config>
-  <root>/p1</root>
+  <root>/_appname_</root>
   <routes>
     <route>
       <url>/hello</url>

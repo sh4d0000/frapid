@@ -460,7 +460,7 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
         Files.createDirectory dirPath 
         
         if( defaultPermission ) {
-            def perms = PosixFilePermissions.fromString 'rwxrwxrwx''
+            def perms = PosixFilePermissions.fromString 'rwxrwxrwx'
             def attr = PosixFilePermissions.asFileAttribute perms
             Files.setPosixFilePermissions dirPath, perms
         }

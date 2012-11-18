@@ -28,7 +28,7 @@ class Frapid {
    
     def Frapid() {
 
-        dirs = ["components", "lib", "config", "tmp", "media", "bin"];
+        dirs = ["components", "lib", "config", "tmp", "media", "dist", "docs"];
 
         def frapidPath = System.getenv()["FRAPID_HOME"]
         config = new ConfigSlurper().parse(new File("${frapidPath}/config.groovy").toURL())
@@ -54,8 +54,7 @@ class Frapid {
         Files.write( privKeyPath, privateKey.encoded  )
 
     }
-
-
+        
     def createProject( name, path = "." ) {
 
         def projectRootPath = Paths.get path, name
@@ -107,6 +106,21 @@ class Frapid {
         } 
 
     }
+    
+    def generateDoc( projectPath ) {
+        def projectRoot = getProjectRoot projectPath
+        
+        def ant = new AntBuilder()
+        ant.project.getBuildListeners().each{ it.setOutputPrintStream(new PrintStream('/dev/null')) }
+        
+        """phpdoc -d ${projectRoot.toString()}/components/ -t ${projectRoot.toString()}/docs/""".execute()
+        
+        ant.tar( destFile: "${projectRoot.toString()}/dist/docs.tar.gz", compression: "gzip" ) {
+            tarfileset ( dir: "${projectRoot.toString()}/docs/" , prefix: "docs" )
+        }
+
+        
+    }
 
     def deploy( projectPath, environment = 'dev' ) {
 
@@ -141,8 +155,8 @@ class Frapid {
 
         s.withStreams { input, output ->
             
-            def packPath = projectRoot.resolve( "bin/${app.name}.tar.gz" )
-            def sigPath = projectRoot.resolve( "bin/${app.name}.sig" )
+            def packPath = projectRoot.resolve( "dist/${app.name}.tar.gz" )
+            def sigPath = projectRoot.resolve( "dist/${app.name}.sig" )
             def sizePack = Files.size(packPath)  
             def sizeSig = Files.size(sigPath)  
 
@@ -228,7 +242,7 @@ class Frapid {
         def ant = new AntBuilder()
 
         ant.project.getBuildListeners().each{ it.setOutputPrintStream(new PrintStream('/dev/null')) }
-        def archivePath = path.resolve( "bin/${app.name}.tar.gz" ) 
+        def archivePath = path.resolve( "dist/${app.name}.tar.gz" ) 
         
         if ( Files.exists(archivePath) ) {
             Files.delete archivePath 
@@ -259,7 +273,7 @@ class Frapid {
 
         byte[] realSig = dsa.sign();
 
-        Files.write( path.resolve("bin/${app.name}.sig"), realSig)
+        Files.write( path.resolve("dist/${app.name}.sig"), realSig)
 
     }
 

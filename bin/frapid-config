@@ -1,6 +1,6 @@
 #!/usr/bin/env groovy 
 
-def cli = new CliBuilder(usage: 'frapid-config')
+def cli = new CliBuilder(usage: 'frapid-config mode')
 def opt = cli.parse(args)
 
 if ( opt.h ) {
@@ -8,8 +8,9 @@ if ( opt.h ) {
    return
 }
 
+def mode = opt.arguments()[0] ? opt.arguments()[0] : null
 
 println("Configuring Frapi...")
 def frapid = new Frapid()
-frapid.config()
+mode? frapid.config( mode ) : frapid.config()
 println("Frapi configurated")

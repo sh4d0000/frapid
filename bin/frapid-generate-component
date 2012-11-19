@@ -1,0 +1,16 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-generate-component name path')
+def opt = cli.parse(args)
+
+if ( opt.h || opt.arguments().size < 1) {
+   cli.usage()
+   return
+}
+
+def path = opt.arguments()[1] ? opt.arguments()[1] : "."
+
+println("Creating component...")
+def frapid = new Frapid()
+frapid.generate( 'business_component', opt.arguments()[0], path )
+println("Componente created")

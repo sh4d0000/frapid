@@ -4,6 +4,7 @@ frapid {
    temp = home + File.separator + "tmp"
    templates  = home + File.separator + "templates"
    classes = home + File.separator + "classes"
+   frapiConfigFile = "frapi_conf.xml"
 
 }
 
@@ -34,10 +35,3 @@ envs {
    }
 }
 
-database {
-
-     url = "localhost:3306/drupal7"
-     username = "drupal7"
-     password = "drupal7"
-
-}

@@ -1,4 +1,5 @@
 <routes-config>
+  <!-- non modificare il valore di root -->
   <root>/_appname_</root>
   <routes>
     <route>

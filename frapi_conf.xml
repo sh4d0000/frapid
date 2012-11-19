@@ -1,0 +1,8 @@
+<config>
+  <apistore-mode>false</apistore-mode>
+  <database>
+    <url>localhost:3306/drupal7</url>
+    <username>drupal7</username>
+    <password>drupal7</password>
+  </database>
+</config>

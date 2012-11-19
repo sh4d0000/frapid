@@ -339,6 +339,12 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
         // creating Frapid dir in Frapi
         this.createDir frapiConf.frapid 
         this.copy config.frapid.classes, frapiConf.frapid , "Frapid.php"
+        
+        println( [config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile] )
+        def p = this.copy config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile
+        
+        println p.toString()
+        println Files.exists(p)
 
     }
 

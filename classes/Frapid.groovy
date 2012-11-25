@@ -162,23 +162,20 @@ class Frapid {
 
             output << "publish dev ${app.name}.tar.gz ${app.name}.sig $sizePack $sizeSig\n"
 
-            println "attendo ok"
             def reader = input.newReader()
             def buffer = reader.readLine()
             if(buffer == 'ok') {
                 sendFile( packPath , input, output ) 
             }
 
-            println "attendo ok"
             buffer = reader.readLine()
             if(buffer == 'ok') {
                 sendFile( sigPath, input, output ) 
             }
   
-            println "attendo bye"
             buffer = reader.readLine()
             if(buffer == 'bye') {
-                println "Terminato"
+                //println "Terminato"
             }
         }
 
@@ -340,27 +337,16 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
         this.createDir frapiConf.frapid 
         this.copy config.frapid.classes, frapiConf.frapid , "Frapid.php"
         
-        println( [config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile] )
         def p = this.copy config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile
-        
-        println p.toString()
-        println Files.exists(p)
 
     }
 
     def unconfig( environment = 'dev') {
 
-        // sostituisci main action
-        def mainAction = Paths.get( config.frapid.templates , "Main_bk.php" )
-        def destinationFolder = Paths.get( config.envs."$environment".frapi.main_controller.toString() , "Main.php" )
-                      
-        this.copy mainAction, destinationFolder
-        
-        // deleting frapid dir in Frapi e front controller
-        def frapiConf = config.envs."$environment".frapi
-        new File( frapiConf.frapid.toString() ).deleteDir()
-        Files.delete( Paths.get( frapiConf.action.toString(), "Frontcontroller.php" ) )
-        
+      def workingDir = new File(config.envs."$environment".frapi.home)
+      "git add .".execute(null, workingDir).waitFor()
+      "git reset --hard".execute( null, workingDir )
+
     }
 
     def camelize(String self) {

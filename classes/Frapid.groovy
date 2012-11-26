@@ -290,7 +290,12 @@ class Frapid {
         def attr = PosixFilePermissions.asFileAttribute(perms)
         
         tmp.toFile().eachFileRecurse {
-            Files.setPosixFilePermissions( Paths.get(it.toURI()) , perms )
+            
+            try {
+                Files.setPosixFilePermissions( Paths.get(it.toURI()) , perms )
+            } catch(e) {
+               //println "catched"
+            }
         }
  
     }

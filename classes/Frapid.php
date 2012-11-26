@@ -46,9 +46,15 @@ class Frapid {
             $string = file_get_contents($fileInfo->getPathname());
             $routesConfig = $this->xmlstr_to_array($string);
             $root = $routesConfig["root"];
+         
+            $toIterate = $routesConfig["routes"];
+            
+            if( isset($toIterate["route"][0]) ) {
+                $toIterate = $toIterate["route"];
+            }
 
-            foreach ($routesConfig["routes"]["route"] as $route) {
-                            
+            foreach ($toIterate as $route) {
+                
                 $url = $route["url"];
 
                 if (substr($url, -1) != '/') {
@@ -59,7 +65,7 @@ class Frapid {
             }
         }
 
-        return $routeMap;
+       return $routeMap;
     }
 
     public function getComponentPath($uri) {
@@ -68,7 +74,7 @@ class Frapid {
         $comp_path = null;
         $params = array();
         parse_str($this->getQueryString(), $params);
-
+        
         if (isset($routeMap[$uri])) {
             $comp_path = $routeMap[$uri];
         } else {

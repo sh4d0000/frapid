@@ -34,14 +34,15 @@ class Action_Frontcontroller extends Frapi_Action implements Frapi_Action_Interf
 
         $frapid = new Frapid();
         $uri = $frapid->getUri();
+        $httpMethod = $frapid->getHTTPMethod();
 
         $permission = $frapid->check_token();
 
         if ($permission == false) {
             throw new Frapi_Error('UNAUTHORIZED', 'Invalid access token', 401);
         }
-
-        $component = $frapid->getComponentPath($uri);
+        
+        $component = $frapid->getComponentPath( $httpMethod.":".$uri);
         $result = call_user_func_named_array($component["path"], $component["params"]);
 
         if (is_scalar($result)) {

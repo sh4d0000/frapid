@@ -1,0 +1,16 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-generate-routes projectRoot')
+def opt = cli.parse(args)
+
+if ( opt.h ) {
+   cli.usage()
+   return
+}
+
+def path = opt.arguments()[0] ? opt.arguments()[0] : "."
+
+println("Creating routes.xml...")
+def frapid = new Frapid()
+frapid.generateRoutes( path )
+println("Routes.xml created")

@@ -1,0 +1,26 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-submit username')
+
+def opt = cli.parse(args)
+
+if ( opt.h ) {
+   cli.usage()
+   return
+}
+
+println("Submitting project to API store...")
+def frapid = new Frapid()
+
+try {
+
+    def result = opt.arguments()[0] ? frapid.submit( opt.arguments()[0] ) : frapid.submit()
+    result? println("This project has been submitted") : println("Is not possible submit the project in this moment. Please try later.")
+
+} catch( SocketException e ) {
+
+    println 'Is not possible estabilish a connection with the server. Please try later.'
+
+}
+
+

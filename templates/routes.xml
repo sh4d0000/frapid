@@ -5,6 +5,7 @@
     <route>
       <url>/hello</url>
       <component>SampleComponent#sayHello</component>
+      <method>get</method>
     </route>      
   </routes>    
 </routes-config>

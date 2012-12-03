@@ -1,0 +1,15 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-rename projectName')
+
+def opt = cli.parse(args)
+
+if ( opt.h || opt.arguments().size() < 1) {
+   cli.usage()
+   return
+}
+
+println("Renaming project...")
+def frapid = new Frapid()
+frapid.rename( opt.arguments()[0] )
+println("Project renamed")

@@ -1,0 +1,26 @@
+#!/usr/bin/env groovy 
+
+def cli = new CliBuilder(usage: 'frapid-check-name name')
+
+def opt = cli.parse(args)
+
+if ( opt.h ) {
+   cli.usage()
+   return
+}
+
+println("Checking...")
+def frapid = new Frapid()
+
+try {
+
+    def result = opt.arguments()[0] ? frapid.checkName( opt.arguments()[0] ) : frapid.checkName()
+    result? println("This project name is available") : println("This project name is NOT available")
+
+} catch( SocketException e ) {
+
+    println 'Is not possible check the project name in this moment. Please try later.'
+
+}
+
+

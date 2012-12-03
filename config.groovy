@@ -5,6 +5,7 @@ frapid {
    templates  = home + File.separator + "templates"
    classes = home + File.separator + "classes"
    frapiConfigFile = "frapi_conf.xml"
+   mysqlDriver = classes + File.separator + "mysql-connector-java-5.1.22-bin.jar"
 
 }
 
@@ -19,7 +20,7 @@ envs {
          config = custom + File.separator + "Config"
          action = custom + File.separator + "Action"
          frapid = custom + File.separator + "frapid"
-         main_controller = home + File.separator + "/src/frapi/library/Frapi/Controller"
+         main_controller = home + File.separator + "src/frapi/library/Frapi/Controller"
 
       }
    }
@@ -35,3 +36,8 @@ envs {
    }
 }
 
+drupal {
+    home = System.getenv()["DRUPAL_HOME"]
+    privateFileSystem = home.toString() + File.separator + "sites/default/private"
+    publicFileSystem = home.toString() + File.separator + "sites/default/files"
+}

@@ -26,7 +26,11 @@ class Frapid {
         if (substr($uri, -1) != '/')
             $uri = $uri . '/';
 
-        return $uri;
+        return strtolower($uri);
+    }
+
+    public function getHTTPMethod() {
+        return strtolower($_SERVER['REQUEST_METHOD']);
     }
 
     public function getQueryString() {
@@ -46,26 +50,39 @@ class Frapid {
             $string = file_get_contents($fileInfo->getPathname());
             $routesConfig = $this->xmlstr_to_array($string);
             $root = $routesConfig["root"];
-         
-            $toIterate = $routesConfig["routes"];
             
-            if( isset($toIterate["route"][0]) ) {
+            if (substr($root, 0, 1) != '/') {
+                $root = '/' . $root;
+            }
+            
+            $namespace = substr($root, 1) . '\\';
+            $toIterate = $routesConfig["routes"];
+
+            if (isset($toIterate["route"][0])) {
                 $toIterate = $toIterate["route"];
             }
 
             foreach ($toIterate as $route) {
-                
+
                 $url = $route["url"];
+
+                $methods = isset($route["method"]) ? $route["method"] : "get";
+                $methods = array_filter(explode(',', $methods));
+
 
                 if (substr($url, -1) != '/') {
                     $url = $url . '/';
                 }
 
-                $routeMap[$root . $url] = $route["component"];
+                foreach ($methods as $method) {
+                    $method = trim($method);
+                    $routeMap[strtolower($method . ":" . $root . $url)] = $namespace . $route["component"];
+                }
             }
+            
         }
 
-       return $routeMap;
+        return $routeMap;
     }
 
     public function getComponentPath($uri) {
@@ -74,11 +91,10 @@ class Frapid {
         $comp_path = null;
         $params = array();
         parse_str($this->getQueryString(), $params);
-        
+
         if (isset($routeMap[$uri])) {
             $comp_path = $routeMap[$uri];
         } else {
-
             foreach ($routeMap as $uriRoute => $path) {
 
                 $uri_ = array_filter(explode('/', $uri));
@@ -90,7 +106,7 @@ class Frapid {
                 }
 
                 for ($i = 1; $i <= $length; $i++) {
-
+                    // TODO controllo index out of bound: gestione mancanza component per quell'uri
                     $segment = $uri_[$i];
                     $segmentRoute = $uriRoute[$i];
 
@@ -117,10 +133,10 @@ class Frapid {
     public function check_token() {
 
         $config = $this->get_frapi_config();
-        if( $config['apistore-mode'] == "false" ) {
+        if ($config['apistore-mode'] == "false") {
             return true;
-        }        
-        
+        }
+
         $uri = $this->getUri();
         $component = $this->getComponentPath($uri);
 
@@ -128,7 +144,7 @@ class Frapid {
 
         $params = array();
         parse_str($this->getQueryString(), $params);
-        
+
         if (!isset($params['token'])) {
             return false;
         }
@@ -159,7 +175,7 @@ class Frapid {
         $config = $this->xmlstr_to_array($string);
         return $config;
     }
-    
+
     public function get_frapi_config() {
 
         $string = file_get_contents(CUSTOM_PATH . DIRECTORY_SEPARATOR . 'frapid' . DIRECTORY_SEPARATOR . 'frapi_conf.xml');

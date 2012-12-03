@@ -53,9 +53,14 @@ class Frapid {
         def privateKey = keyPair.getPrivate();
         def publicKey = keyPair.getPublic();
 
-        def pubKeyPath = Paths.get( path , "public.key")
-        def privKeyPath = Paths.get( path ,"private.key")
-
+        def keyDir = Paths.get config.frapid.keyDir 
+        if( !Files.exists(keyDir) ) {
+            this.createDir keyDir  
+        }   
+        
+        def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
+        def privKeyPath = Paths.get config.frapid.keyDir ,"private.key"
+        
         Files.write( pubKeyPath, publicKey.encoded  )
         Files.write( privKeyPath, privateKey.encoded  )
 
@@ -92,8 +97,8 @@ class Frapid {
         
         generate( "business_component", "SampleComponent", projectRootPath )
       
-        def home = Paths.get config.frapid.home
-        if( Files.notExists( home.resolve( "public.key" ) ) || Files.notExists( home.resolve( "private.key") ) ) {
+        def keyDir = Paths.get config.frapid.keyDir 
+        if( Files.notExists( keyDir.resolve( "public.key" ) ) || Files.notExists( keyDir.resolve( "private.key") ) ) {
             generateKeys()
         }
 
@@ -412,7 +417,7 @@ class Frapid {
         pack = Paths.get pack
         signature = new File( signature ).bytes
 
-        def pubKeyPath = Paths.get( config.frapid.home , "public.key")
+        def pubKeyPath = Paths.get( config.frapid.keyDir , "public.key")
         if( publicKey ) pubKeyPath = Paths.get( publicKey )
       
         publicKey = getPublicKey pubKeyPath.toFile()
@@ -452,8 +457,8 @@ class Frapid {
         }
 
         // digitally sign data
-        def pubKeyPath = Paths.get config.frapid.home , "public.key"
-        def privKeyPath = Paths.get config.frapid.home , "private.key"
+        def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
+        def privKeyPath = Paths.get config.frapid.keyDir , "private.key"
       
         def privKey =  getPrivateKey( privKeyPath.toFile() )
         def pubKey =  getPublicKey( pubKeyPath.toFile() )

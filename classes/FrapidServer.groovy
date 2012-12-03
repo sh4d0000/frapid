@@ -17,6 +17,8 @@ while(true) {
 
             def reader = input.newReader()
             def buffer = reader.readLine()
+
+            println "buffer: $buffer"
             
             def command = buffer.tokenize()
             def operation = command[0]

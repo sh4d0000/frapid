@@ -626,11 +626,11 @@ values( :uid, :filename, :uri, :filemime, :filesize, :status, :timestamp )
         
         // salva api in api table
         record = [
-        name: projectName, 
-        user_id: userId, 
-        status: 'PENDING', 
-        fid: recordInserted[0][0],
-        sku: projectName
+            name: projectName, 
+            user_id: userId, 
+            status: 'PENDING', 
+            fid: recordInserted[0][0],
+            sku: projectName
         ]
         
         def api = sql.dataSet( 'api' )
@@ -708,8 +708,11 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
     def unconfig( environment = 'dev') {
 
         def workingDir = new File(config.envs."$environment".frapi.home)
-      "git add .".execute(null, workingDir).waitFor()
-      "git reset --hard".execute( null, workingDir )
+        "git add .".execute(null, workingDir).waitFor()
+        "git reset --hard".execute( null, workingDir )
+        
+        def frapidDir = Paths.get( config.envs."$environment".frapi.frapid ).toFile()
+        frapidDir.deleteDir()
 
     }
 

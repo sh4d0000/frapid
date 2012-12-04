@@ -35,8 +35,9 @@ class Frapid {
 
     public function getQueryString() {
 
-        $query = explode('.', $_SERVER['QUERY_STRING']);
-        return $query[0];
+        $uri = explode('?', $_SERVER['REQUEST_URI']);
+        return $uri[1];
+
     }
 
     public function getRouteMap() {

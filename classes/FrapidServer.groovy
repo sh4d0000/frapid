@@ -34,16 +34,12 @@ while(true) {
 
 def publish( args, input, output ) {
 
-    def (env, packName, signatureName, sizePack, sizeSig) = args
+    def (env, packName, sizePack ) = args
 
     output << 'ok\n'
     output.flush()
     def packPath = receiveFile( Paths.get(config.frapid.temp.toString(), packName), input, sizePack.toInteger() )
 
-    output << 'ok\n'
-    output.flush()
-    def signaturePath = receiveFile( Paths.get(config.frapid.temp.toString(), signatureName), input, sizeSig.toInteger() )
-   
     def frapid = new Frapid()
     frapid.publish( packPath.toString() )
 
@@ -71,14 +67,15 @@ def submit( args, input, output ) {
         
     if( !pubKeyPath ) {
         output << 'Cannot find public key\n'
+        return;
     } else if( !frapid.verifyPack( packPath.toString(), signaturePath.toString(), pubKeyPath.toString() ) ) {
         output << 'Not valid signature\n'
+        return;
     }
     
     println "saveinstore invocation" 
     frapid.saveApiIntoStore( packPath, username )
 
-    println "invio buye" 
     output << 'bye\n'
     output.flush()    
 }

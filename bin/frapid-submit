@@ -4,7 +4,7 @@ def cli = new CliBuilder(usage: 'frapid-submit username')
 
 def opt = cli.parse(args)
 
-if ( opt.h ) {
+if ( opt.h || opt.arguments().isEmpty() ) {
    cli.usage()
    return
 }
@@ -14,8 +14,7 @@ def frapid = new Frapid()
 
 try {
 
-    def result = opt.arguments()[0] ? frapid.submit( opt.arguments()[0] ) : frapid.submit()
-    result? println("This project has been submitted") : println("Is not possible submit the project in this moment. Please try later.")
+    def result = frapid.submit( opt.arguments()[0] )
 
 } catch( SocketException e ) {
 

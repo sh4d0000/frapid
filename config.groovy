@@ -28,12 +28,12 @@ envs {
 
    test {
       type = 'remote'
-      uri = '79.49.91.106:4444'
+      uri = 'localhost:4444'
    }
 
    prod {
       type = 'remote'
-      uri = '79.49.91.106:4444'
+      uri = 'localhost:4444'
    }
 }
 

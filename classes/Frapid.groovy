@@ -355,7 +355,7 @@ class Frapid {
 
         def projectRoot = getProjectRoot projectPath
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
-        pack( projectPath )
+        pack( projectPath, false )
         
         def uri = config.envs."$env".uri.split(':')
         def s = new Socket( uri[0], uri[1].toInteger() );
@@ -363,11 +363,9 @@ class Frapid {
         s.withStreams { input, output ->
             
             def packPath = projectRoot.resolve( "dist/${app.name}.tar.gz" )
-            def sigPath = projectRoot.resolve( "dist/${app.name}.sig" )
             def sizePack = Files.size(packPath)  
-            def sizeSig = Files.size(sigPath)  
 
-            output << "publish dev ${app.name}.tar.gz ${app.name}.sig $sizePack $sizeSig\n"
+            output << "publish dev ${app.name}.tar.gz $sizePack\n"
 
             def reader = input.newReader()
             def buffer = reader.readLine()
@@ -375,11 +373,6 @@ class Frapid {
                 sendFile( packPath , input, output ) 
             }
 
-            buffer = reader.readLine()
-            if(buffer == 'ok') {
-                sendFile( sigPath, input, output ) 
-            }
-  
             buffer = reader.readLine()
             if(buffer == 'bye') {
                 //println "Terminato"
@@ -390,14 +383,10 @@ class Frapid {
     }
     
     def sendFile( path, input, output ) {
-        println 'invio file: '+ path.toString() 
-        println 'invio in corso'
-
+        
         output.write( path.toFile().bytes )
         output.flush();
-
-        println("File inviato correttamente");
-			
+        
     }
 
 
@@ -438,7 +427,7 @@ class Frapid {
 
     }
 
-    def pack( path = "." ) {
+    def pack( path = ".", sign = true ) {
 
         path = getProjectRoot path
 
@@ -456,28 +445,31 @@ class Frapid {
             tarfileset ( dir: path , prefix: app.name )
         }
 
-        // digitally sign data
-        def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
-        def privKeyPath = Paths.get config.frapid.keyDir , "private.key"
-      
-        def privKey =  getPrivateKey( privKeyPath.toFile() )
-        def pubKey =  getPublicKey( pubKeyPath.toFile() )
+        if( sign ) {
+            // digitally sign data
+            println config.frapid.keyDir 
+            def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
+            def privKeyPath = Paths.get config.frapid.keyDir , "private.key"
 
-        Signature dsa = Signature.getInstance("SHA1withRSA"); 
-        dsa.initSign( privKey );
+            def privKey =  getPrivateKey( privKeyPath.toFile() )
+            def pubKey =  getPublicKey( pubKeyPath.toFile() )
 
-        FileInputStream fis = new FileInputStream( archivePath.toFile()  );
-        BufferedInputStream bufin = new BufferedInputStream(fis);
-        byte[] buffer = new byte[1024];
-        int len;
-        while ((len = bufin.read(buffer)) >= 0) {
-            dsa.update(buffer, 0, len);
-        };
-        bufin.close();
+            Signature dsa = Signature.getInstance("SHA1withRSA"); 
+            dsa.initSign( privKey );
 
-        byte[] realSig = dsa.sign();
+            FileInputStream fis = new FileInputStream( archivePath.toFile()  );
+            BufferedInputStream bufin = new BufferedInputStream(fis);
+            byte[] buffer = new byte[1024];
+            int len;
+            while ((len = bufin.read(buffer)) >= 0) {
+                dsa.update(buffer, 0, len);
+            };
+            bufin.close();
 
-        Files.write( path.resolve("dist/${app.name}.sig"), realSig)
+            byte[] realSig = dsa.sign();
+
+            Files.write( path.resolve("dist/${app.name}.sig"), realSig)
+        }
 
     }
 
@@ -524,8 +516,6 @@ class Frapid {
     
     def submit( username, projectPath = '.', env = 'prod' ) {
         
-        println username
-        
         def projectRoot = getProjectRoot projectPath
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
         
@@ -559,22 +549,23 @@ class Frapid {
                 sendFile( sigPath, input, output ) 
             }
            
-            println "dopo invio file"
+            
+            // TODO spostare output sul comando frapid-deploy
             buffer = reader.readLine()
             if(buffer == 'bye') {
-                println "ricevuto bye"
                 //println "Terminato"
+                println "Project Submitted"
             } else if( buffer == 'Not valid signature' ) {
                 // TODO creare una exception apposita
                 println 'Not valid signature'
+                return false
             } else if( buffer == 'Cannot find public key' ) {
                 // TODO creare una exception apposita
                 println 'Is impossible to recover your public key. Please check your username or set a public key into the store\n'
+                return false
             }
         }
         
-        println "terminato"
-
         return true
         
     }
@@ -622,7 +613,6 @@ values( :uid, :filename, :uri, :filemime, :filesize, :status, :timestamp )
         def recordInserted = sql.executeInsert( insertSql, record)
         
         def projectName = packFile.name.split('\\.')[0]
-        println projectName
         
         // salva api in api table
         record = [

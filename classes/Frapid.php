@@ -36,6 +36,11 @@ class Frapid {
     public function getQueryString() {
 
         $uri = explode('?', $_SERVER['REQUEST_URI']);
+        
+        if( !isset( $uri[1] ) ) {
+           return "";
+        }
+
         return $uri[1];
 
     }

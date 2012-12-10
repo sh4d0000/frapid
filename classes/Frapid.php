@@ -105,20 +105,20 @@ class Frapid {
 
                 $uri_ = array_filter(explode('/', $uri));
                 $uriRoute = array_filter(explode('/', $uriRoute));
-
+                
                 $length = count($uriRoute);
                 if (count($uri_) != $length) {
                     continue;
                 }
 
-                for ($i = 1; $i <= $length; $i++) {
+                for ($i = 0; $i < $length; $i++) {
                     // TODO controllo index out of bound: gestione mancanza component per quell'uri
                     $segment = $uri_[$i];
                     $segmentRoute = $uriRoute[$i];
-
+                    
                     if ($segmentRoute[0] == ':') {
                         $params[substr($segmentRoute, 1)] = $segment;
-                        if ($i == $length) {
+                        if ($i == ($length - 1) ) {
                             $comp_path = $path;
                             break 2;
                         }

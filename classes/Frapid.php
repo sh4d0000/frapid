@@ -219,11 +219,9 @@ class Frapid {
                 }
                 if (is_array($output)) {
                     if ($node->attributes->length) {
-                        $a = array();
                         foreach ($node->attributes as $attrName => $attrNode) {
-                            $a[$attrName] = (string) $attrNode->value;
+                            $output[$attrName] = (string) $attrNode->value;
                         }
-                        $output['@attributes'] = $a;
                     }
                     foreach ($output as $t => $v) {
                         if (is_array($v) && count($v) == 1 && $t != '@attributes') {

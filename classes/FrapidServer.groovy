@@ -38,7 +38,7 @@ def publish( args, input, output ) {
 
     output << 'ok\n'
     output.flush()
-    def packPath = receiveFile( Paths.get(config.frapid.temp.toString(), packName), input, sizePack.toInteger() )
+    def packPath = receiveFile( Paths.get(config.frapid.tmp.toString(), packName), input, sizePack.toInteger() )
 
     def frapid = new Frapid()
     frapid.publish( packPath.toString() )
@@ -49,17 +49,13 @@ def publish( args, input, output ) {
 
 def submit( args, input, output ) {
     
-    def (env, packName, signatureName, sizePack, sizeSig, username) = args
+    def (env, packName, sizePack, username) = args
     println "start submit"
 
     output << 'ok\n'
     output.flush()
-    def packPath = receiveFile( Paths.get(config.frapid.temp.toString(), packName), input, sizePack.toInteger() )
+    def packPath = receiveFile( Paths.get(config.frapid.tmp.toString(), packName), input, sizePack.toInteger() )
 
-    output << 'ok\n'
-    output.flush()
-    def signaturePath = receiveFile( Paths.get(config.frapid.temp.toString(), signatureName), input, sizeSig.toInteger() )
-    
     println "file ricevuti"
    
     def frapid = new Frapid()
@@ -68,7 +64,7 @@ def submit( args, input, output ) {
     if( !pubKeyPath ) {
         output << 'Cannot find public key\n'
         return;
-    } else if( !frapid.verifyPack( packPath.toString(), signaturePath.toString(), pubKeyPath.toString() ) ) {
+    } else if( !frapid.verifyPack( packPath.toString(), null, pubKeyPath.toString() ) ) {
         output << 'Not valid signature\n'
         return;
     }

@@ -229,9 +229,7 @@ class Frapid {
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
         
         def routesXml = projectRoot.resolve "config/routes.xml"
-        if( Files.exists( routesXml )) {
-            Files.delete routesXml
-        }
+        Files.deleteIfExists routesXml
         
         def routeList = []
         
@@ -362,10 +360,10 @@ class Frapid {
 
         s.withStreams { input, output ->
             
-            def packPath = projectRoot.resolve( "dist/${app.name}.tar.gz" )
+            def packPath = projectRoot.resolve( "dist/${app.name}_api.tar.gz" )
             def sizePack = Files.size(packPath)  
 
-            output << "publish dev ${app.name}.tar.gz $sizePack\n"
+            output << "publish dev ${app.name}_api.tar.gz $sizePack\n"
 
             def reader = input.newReader()
             def buffer = reader.readLine()
@@ -401,10 +399,29 @@ class Frapid {
         
     }
 
-    def verifyPack( pack, signature, publicKey = null ) {
+    def verifyPack( pack, publicKey = null, signature = null ) {
 
         pack = Paths.get pack
-        signature = new File( signature ).bytes
+        println "sig: ${signature.toString()}"
+        println "pkey: ${publicKey.toString()}"
+        println "pack: ${pack.toString()}, exists: ${Files.exists(pack)}"
+        if( !signature ) {
+            def name = pack.fileName.toString().split('_api')[0]
+            
+            def tmpPack = Paths.get config.frapid.tmp, "${name}.tar.gz"
+            def tmpSignature = Paths.get config.frapid.tmp, "${name}.sig"
+            
+            Files.deleteIfExists tmpPack
+            Files.deleteIfExists tmpSignature
+            
+            unpack pack, config.frapid.tmp
+            
+            pack = tmpPack
+            signature = tmpSignature
+            
+        }
+        
+        signature = new File( signature.toString() ).bytes
 
         def pubKeyPath = Paths.get( config.frapid.keyDir , "public.key")
         if( publicKey ) pubKeyPath = Paths.get( publicKey )
@@ -423,8 +440,7 @@ class Frapid {
         bufin.close();
 
         signatureManager.verify signature
-      
-
+        
     }
 
     def pack( path = ".", sign = true ) {
@@ -435,19 +451,17 @@ class Frapid {
         def ant = new AntBuilder()
 
         ant.project.getBuildListeners().each{ it.setOutputPrintStream(new PrintStream('/dev/null')) }
-        def archivePath = path.resolve( "dist/${app.name}.tar.gz" ) 
+        def projectPath = path.resolve( "tmp/${app.name}.tar.gz" ) 
+        def sigPath = path.resolve("tmp/${app.name}.sig")
         
-        if ( Files.exists(archivePath) ) {
-            Files.delete archivePath 
-        } 
+        Files.deleteIfExists projectPath  
 
-        ant.tar( destFile: archivePath, compression: "gzip" ) {
+        ant.tar( destFile: projectPath , compression: "gzip" ) {
             tarfileset ( dir: path , prefix: app.name )
         }
 
         if( sign ) {
             // digitally sign data
-            println config.frapid.keyDir 
             def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
             def privKeyPath = Paths.get config.frapid.keyDir , "private.key"
 
@@ -457,7 +471,7 @@ class Frapid {
             Signature dsa = Signature.getInstance("SHA1withRSA"); 
             dsa.initSign( privKey );
 
-            FileInputStream fis = new FileInputStream( archivePath.toFile()  );
+            FileInputStream fis = new FileInputStream( projectPath.toFile()  );
             BufferedInputStream bufin = new BufferedInputStream(fis);
             byte[] buffer = new byte[1024];
             int len;
@@ -468,14 +482,22 @@ class Frapid {
 
             byte[] realSig = dsa.sign();
 
-            Files.write( path.resolve("dist/${app.name}.sig"), realSig)
+            Files.write( sigPath, realSig)
         }
+        
+        def archivePath = path.resolve( "dist/${app.name}_api.tar.gz" ) 
+        Files.deleteIfExists archivePath 
 
+        ant.tar( destFile: archivePath, compression: "gzip", basedir: path.resolve('tmp') ) 
+
+        // cancellazione file temporanei
+        Files.delete projectPath
+        Files.deleteIfExists sigPath  
     }
 
     def unpack( file, path = "." ){
 
-        def tmp = Paths.get( path )
+        def tmp = Paths.get path
                        
         if( !Files.exists(tmp) ) {
             this.createDir tmp  
@@ -504,13 +526,14 @@ class Frapid {
         def ant = new AntBuilder()
         ant.project.getBuildListeners().each{ it.setOutputPrintStream(new PrintStream('/dev/null')) }
         
-        def dir = new File( destination )
-        def path = Paths.get pack
+        pack = Paths.get pack
+        destination = Paths.get destination
+        def name = pack.fileName.toString().split("_api")[0]
         
-        unpack path.toString(), destination
-        def name = path.fileName.toString().split("\\.")[0]
+        unpack pack.toString(), destination.toString()
+        unpack destination.resolve( "${name}.tar.gz" ), destination.toString()
         
-        deploy( destination + name, env )
+        deploy( destination.resolve("$name").toString(), env )
 
     }
     
@@ -524,19 +547,17 @@ class Frapid {
             return false
         }
         
-        pack( projectPath )
+        pack projectPath 
         
         def uri = config.envs."$env".uri.split(':')
         def s = new Socket( uri[0], uri[1].toInteger() );
 
         s.withStreams { input, output ->
             
-            def packPath = projectRoot.resolve( "dist/${app.name}.tar.gz" )
-            def sigPath = projectRoot.resolve( "dist/${app.name}.sig" )
+            def packPath = projectRoot.resolve( "dist/${app.name}_api.tar.gz" )
             def sizePack = Files.size(packPath)  
-            def sizeSig = Files.size(sigPath)  
 
-            output << "submit dev ${app.name}.tar.gz ${app.name}.sig $sizePack $sizeSig $username\n"
+            output << "submit dev ${app.name}_api.tar.gz $sizePack $username\n"
 
             def reader = input.newReader()
             def buffer = reader.readLine()
@@ -544,12 +565,6 @@ class Frapid {
                 sendFile( packPath , input, output ) 
             }
 
-            buffer = reader.readLine()
-            if(buffer == 'ok') {
-                sendFile( sigPath, input, output ) 
-            }
-           
-            
             // TODO spostare output sul comando frapid-deploy
             buffer = reader.readLine()
             if(buffer == 'bye') {
@@ -612,7 +627,7 @@ values( :uid, :filename, :uri, :filemime, :filesize, :status, :timestamp )
         // salva file in managed file table
         def recordInserted = sql.executeInsert( insertSql, record)
         
-        def projectName = packFile.name.split('\\.')[0]
+        def projectName = packFile.name.split('_api')[0]
         
         // salva api in api table
         record = [

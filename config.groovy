@@ -2,7 +2,7 @@ frapid {
       
    home = System.getenv()["FRAPID_HOME"] 
    keyDir = System.getenv()["HOME"] + File.separator + ".frapid" 
-   temp = home + File.separator + "tmp"
+   tmp = home + File.separator + "tmp"
    templates  = home + File.separator + "templates"
    classes = home + File.separator + "classes"
    frapiConfigFile = "frapi_conf.xml"

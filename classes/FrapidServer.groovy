@@ -64,7 +64,7 @@ def submit( args, input, output ) {
     if( !pubKeyPath ) {
         output << 'Cannot find public key\n'
         return;
-    } else if( !frapid.verifyPack( packPath.toString(), null, pubKeyPath.toString() ) ) {
+    } else if( !frapid.verifyPack( packPath.toString(), pubKeyPath.toString() ) ) {
         output << 'Not valid signature\n'
         return;
     }

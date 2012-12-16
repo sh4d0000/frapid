@@ -39,6 +39,6 @@ envs {
 
 drupal {
     home = System.getenv()["DRUPAL_HOME"]
-    privateFileSystem = home.toString() + File.separator + "sites/default/private"
-    publicFileSystem = home.toString() + File.separator + "sites/default/files"
+    privateFileSystem = home + File.separator + "sites/default/private"
+    publicFileSystem = home + File.separator + "sites/default/files"
 }

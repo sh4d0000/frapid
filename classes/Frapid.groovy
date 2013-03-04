@@ -31,7 +31,7 @@ import javax.xml.transform.OutputKeys
 
 class Frapid {
 
-    def dirs, config
+    def dirs, config, serviceLocator
    
     def Frapid() {
 
@@ -39,13 +39,13 @@ class Frapid {
 
         def frapidPath = System.getenv()["FRAPID_HOME"]
         config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
+
+        serviceLocator = new ServiceLocator()
     }
 
-    def generateKeys( ) {
-        def path = config.frapid.home 
+    def generateKeys() {
+        def path = config.frapid.home
 	
-        //def keyGen = KeyPairGenerator.getInstance("DSA", "SUN")
-        //keyGen.initialize(1024, SecureRandom.getInstance("SHA1PRNG", "SUN") );
         def keyGen = KeyPairGenerator.getInstance("RSA")
         keyGen.initialize(1024 );
       
@@ -55,7 +55,7 @@ class Frapid {
 
         def keyDir = Paths.get config.frapid.keyDir 
         if( !Files.exists(keyDir) ) {
-            this.createDir keyDir  
+            serviceLocator.fileSystem { createDir keyDir }
         }   
         
         def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
@@ -65,47 +65,52 @@ class Frapid {
         Files.write( privKeyPath, privateKey.encoded  )
 
     }
-        
+
     def createProject( name, path = ".", force = false ) {
 
         if( !force && !checkName(name) ) {
             return false
         }
-        
+
         def projectRootPath = Paths.get path, name
         def toCreate = [ projectRootPath ]
 
-        toCreate += dirs.collect { projectRootPath.resolve it } 
-        toCreate.each { this.createDir it, false  }
+        toCreate += dirs.collect { projectRootPath.resolve it }
+
+        serviceLocator.fileSystem {
+            toCreate.each { createDir it, false }
+        }
 
         def templatesDir = Paths.get config.frapid.templates
         def configDir = projectRootPath.resolve 'config'
         def mediaDir = projectRootPath.resolve 'media'
 
         // create routes.xml
-        def file = this.copy( templatesDir, configDir, 'routes.xml' ).toFile() 
+        def file = serviceLocator.fileSystem { copy( templatesDir, configDir, 'routes.xml' ).toFile()  }
         file.write( file.text.replaceAll("_appname_", name) )
-        
+
         // create deploy.xml
-        file = this.copy( templatesDir, configDir, 'deploy.xml').toFile()
+        file = serviceLocator.fileSystem { copy( templatesDir, configDir, 'deploy.xml').toFile() }
         file.write( file.text.replaceAll("_name_", name) )
-        
+
         // create config.xml .frapid and default.jpg
-        this.copy templatesDir, configDir, 'config.xml'
-        this.copy templatesDir, projectRootPath, '.frapid'
-        this.copy templatesDir, mediaDir, 'default.jpg'
-        
+        serviceLocator.fileSystem {
+            copy templatesDir, configDir, 'config.xml'
+            copy templatesDir, projectRootPath, '.frapid'
+            copy templatesDir, mediaDir, 'default.jpg'
+        }
+
         generate( "business_component", "SampleComponent", projectRootPath )
-      
-        def keyDir = Paths.get config.frapid.keyDir 
+
+        def keyDir = Paths.get config.frapid.keyDir
         if( Files.notExists( keyDir.resolve( "public.key" ) ) || Files.notExists( keyDir.resolve( "private.key") ) ) {
             generateKeys()
         }
 
         return true
-    
+
     }
-     
+
     def checkName( name = null, path = "."  ) {
         
         if( !name ) {
@@ -199,7 +204,7 @@ class Frapid {
         
         if( type == "business_component" ) {
 
-            def file = this.copy( templatesDir, componentsDir, camelize(type) + ".php").toFile()
+            def file = serviceLocator.fileSystem { copy( templatesDir, componentsDir, camelize(type) + ".php").toFile() }
             file.write( file.text.replaceAll("_${type}_", name) )
             file.write( file.text.replaceAll("_namespace_", app.name.toString() ) )
             file.renameTo( componentsDir.toString() + File.separator + "${name}.php" )
@@ -334,15 +339,15 @@ class Frapid {
 
         def deployDir = createDir( config.envs."$environment".frapi.frapid + File.separator + app.name )
         def componentsDeploy = createDir( deployDir.resolve('components') )
-        this.copy configDir, deployDir, 'routes.xml', 'config.xml'
+        serviceLocator.fileSystem { copy configDir, deployDir, 'routes.xml', 'config.xml' }
         
         def libDeploy = createDir deployDir.resolve('lib')
         projectRoot.resolve('lib').toFile().eachFileMatch( ~/.*\.php/ ) { lib ->
-            this.copy lib.absolutePath, libDeploy.resolve( lib.name ) 
+            serviceLocator.fileSystem { copy lib.absolutePath, libDeploy.resolve( lib.name ) }
         }
                
         projectRoot.resolve("components").toFile().eachFileMatch( ~/.*\.php/ ) { component ->
-            this.copy component.absolutePath, componentsDeploy.resolve( component.name ) 
+            serviceLocator.fileSystem { copy component.absolutePath, componentsDeploy.resolve( component.name ) }
         }
         
         return deployDir
@@ -500,7 +505,7 @@ class Frapid {
         def tmp = Paths.get path
                        
         if( !Files.exists(tmp) ) {
-            this.createDir tmp  
+            serviceLocator.fileSystem { createDir tmp }
         }           
                                
         def ant = new AntBuilder()
@@ -586,7 +591,6 @@ class Frapid {
     }
     
     
-    // TODO da terminare implementazione
     def saveApiIntoStore( packPath, username ) {
         
         // sposta file in private dir
@@ -686,11 +690,15 @@ AND u.name = $username""") { row ->
         
         // sostituisci main controller
         def templatesDir = Paths.get config.frapid.templates 
-        this.copy templatesDir, frapiConf.main_controller, 'Main.php' 
+        serviceLocator.fileSystem {
+            copy templatesDir, frapiConf.main_controller, 'Main.php'
 
-        // moving front controller e actions.xml
-        this.copy templatesDir, frapiConf.action, "Frontcontroller.php"
-        this.copy templatesDir, frapiConf.config, "actions.xml"
+            // moving front controller e actions.xml
+            copy templatesDir, frapiConf.action, "Frontcontroller.php"
+            copy templatesDir, frapiConf.config, "actions.xml"
+        }
+
+
 
         Paths.get( frapiConf.custom, "AllFiles.php" ).toFile() << '''
 $it = new RecursiveDirectoryIterator( CUSTOM_PATH . DIRECTORY_SEPARATOR . 'frapid' ); 
@@ -703,10 +711,13 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
 '''
 
         // creating Frapid dir in Frapi
-        this.createDir frapiConf.frapid 
-        this.copy config.frapid.classes, frapiConf.frapid , "Frapid.php"
+        serviceLocator.fileSystem {
+            createDir frapiConf.frapid
+            copy config.frapid.classes, frapiConf.frapid , "Frapid.php"
+        }
+
         
-        def p = this.copy config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile
+        def p = serviceLocator.fileSystem { copy config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile }
 
     }
 
@@ -799,51 +810,7 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
         cert.sign(privKey, algorithm);
         return cert;
     }
-    
-    def copy(from, to, String... fileNames = null ) {
-    
-        def perms = PosixFilePermissions.fromString "rwxrwxrwx"
-        def attr  = PosixFilePermissions.asFileAttribute perms
-        def fileCopied = null
-        
-        def fromPath = Path.class.isInstance(from)? from : Paths.get(from.toString())
-        def toPath   = Path.class.isInstance(to)  ? to   : Paths.get(to.toString())
-            
-        if( fileNames == null ) {
-            
-            fileCopied = Files.copy fromPath, toPath, REPLACE_EXISTING, COPY_ATTRIBUTES  
-            Files.setPosixFilePermissions fileCopied, perms
-            
-            return fileCopied
-                          
-        } else {
-        
-            def filesCopied = fileNames.collect { fileName ->
-                                    
-                fileCopied = Files.copy fromPath.resolve( fileName ), toPath.resolve( fileName ), REPLACE_EXISTING, COPY_ATTRIBUTES  
-                Files.setPosixFilePermissions fileCopied, perms
-        
-                fileCopied
-            }
-            
-            return filesCopied.size() == 1? filesCopied[0] : filesCopied 
-        }
-        
-        return toPath
-    }
-    
-    def createDir( dir, defaultPermission = true ) {
-                                      
-        def dirPath = Path.class.isInstance(dir)? dir : Paths.get( dir.toString() )
-        Files.createDirectory dirPath 
-        
-        if( defaultPermission ) {
-            def perms = PosixFilePermissions.fromString 'rwxrwxrwx'
-            def attr = PosixFilePermissions.asFileAttribute perms
-            Files.setPosixFilePermissions dirPath, perms
-        }
-        
-        return dirPath
-    }
-  
+
+
+
 }

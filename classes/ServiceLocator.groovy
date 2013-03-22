@@ -5,15 +5,22 @@ class ServiceLocator {
     def ServiceLocator() {
 
         services = [:]
-        services.fileSystem = new FileSystemService()
-        services.digitalSignature = new FileSystemService()
+        services.fileSystem = FileSystemService
+        services.scaffolder = ScaffolderService
+        services.digitalSignature = DigitalSignatureService
 
     }
 
     def fileSystem(Closure c){
 
-        c.delegate = services.fileSystem
+        c.delegate = services.fileSystem.newInstance()
         c()
+
+    }
+
+    def get( service_name  ) {
+
+       return services[service_name].newInstance()
 
     }
 

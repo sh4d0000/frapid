@@ -8,13 +8,6 @@ import java.math.BigInteger;
 import java.util.Date;
 import java.io.IOException
 
-import static java.nio.file.StandardCopyOption.*
-import java.nio.file.attribute.PosixFileAttributes
-import java.nio.file.attribute.PosixFilePermission
-import java.nio.file.attribute.PosixFilePermissions
-import java.nio.file.attribute.FileAttribute
-
-import groovy.xml.StreamingMarkupBuilder
 import javax.xml.transform.stream.StreamResult
 import javax.xml.transform.stream.StreamSource
 import javax.xml.transform.Transformer
@@ -23,12 +16,11 @@ import javax.xml.transform.OutputKeys
 
 class Frapid {
 
-    def dirs, config, serviceLocator
-    def scaffolder, digitalSignature
+    def config, serviceLocator
+    def scaffolder, digitalSignature, projectManager, deployer
    
     def Frapid() {
 
-        dirs = ["components", "lib", "config", "tmp", "media", "dist", "docs"];
 
         def frapidPath = System.getenv()["FRAPID_HOME"]
         config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
@@ -36,156 +28,48 @@ class Frapid {
         serviceLocator = new ServiceLocator()
         scaffolder = serviceLocator.get 'scaffolder'
         digitalSignature = serviceLocator.get 'digitalSignature'
+        projectManager = serviceLocator.get 'projectManager'
 
     }
 
     def createProject( name, path = ".", force = false ) {
-
-        if( !force && !checkName(name) ) {
-            return false
-        }
-
-        def projectRootPath = Paths.get path, name
-        def toCreate = [ projectRootPath ]
-
-        toCreate += dirs.collect { projectRootPath.resolve it }
-
-        serviceLocator.fileSystem {
-            toCreate.each { createDir it, false }
-        }
-
-        def templatesDir = Paths.get config.frapid.templates
-        def configDir = projectRootPath.resolve 'config'
-        def mediaDir = projectRootPath.resolve 'media'
-
-        // create routes.xml
-        def file = serviceLocator.fileSystem { copy( templatesDir, configDir, 'routes.xml' ).toFile()  }
-        file.write( file.text.replaceAll("_appname_", name) )
-
-        // create deploy.xml
-        file = serviceLocator.fileSystem { copy( templatesDir, configDir, 'deploy.xml').toFile() }
-        file.write( file.text.replaceAll("_name_", name) )
-
-        // create config.xml .frapid and default.jpg
-        serviceLocator.fileSystem {
-            copy templatesDir, configDir, 'config.xml'
-            copy templatesDir, projectRootPath, '.frapid'
-            copy templatesDir, mediaDir, 'default.jpg'
-        }
-
-        generate( "business_component", "SampleComponent", projectRootPath )
-
-        def keyDir = Paths.get config.frapid.keyDir
-        if( Files.notExists( keyDir.resolve( "public.key" ) ) || Files.notExists( keyDir.resolve( "private.key") ) ) {
-            digitalSignature.generateKeys()
-        }
-
-        return true
-
+        projectManager.createProject name, path, force
     }
 
     def checkName( name = null, path = "."  ) {
-        
-        if( !name ) {
-            def projectRoot = getProjectRoot path
-            def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
-            name = app.name
-        }
-        
-        def nameAvailable = false
-        
-        def uri = config.envs.prod.uri.split(':')
-        def s = new Socket( uri[0], uri[1].toInteger() );
-        
-        s.withStreams { input, output ->
-            
-            output << "checkName $name\n"
-
-            def reader = input.newReader()
-            def buffer = reader.readLine()
-            
-            nameAvailable = buffer=='ok'? true :false
-                                     
-            buffer = reader.readLine()
-            if(buffer == 'bye') {
-                //println "Terminato"
-            }
-        }
-        
-        return nameAvailable
+        projectManager.checkName name, path
     }
     
     def isProjectNameAvailable( name ) {
-        
-        def frapiConfPath = Paths.get( config.frapid.home, config.frapid.frapiConfigFile )
-        
-        def frapiConf = new XmlSlurper().parse( frapiConfPath.toString() )
-        def db = frapiConf.database
-        
-        def driverURL = new File( config.frapid.mysqlDriver ).toURL()
-        this.getClass().classLoader.rootLoader.addURL( driverURL )
-        
-        def sql = groovy.sql.Sql.newInstance("jdbc:mysql://$db.url", db.username.toString(), db.password.toString() )
-        
-        def answer = 0
-        sql.eachRow("select count(*) from api where name = $name") { row ->
-            answer = row[0]
-        }
-        
-        return answer == 0? true : false     
-        
+        projectManager.isProjectNameAvailable name
     }
     
     def rename( name, path = '.' ) {
-        
-        def projectRoot = getProjectRoot path
-        undeploy projectRoot  
-        
-        def deployXMLPath = projectRoot.resolve("config/deploy.xml")
-        def deployXML = new XmlSlurper().parse( deployXMLPath.toString() )
-        
-        deployXML.name = "$name"
-
-        def outputBuilder = new StreamingMarkupBuilder()
-        String result = indentXml( outputBuilder.bind{ mkp.yield deployXML } )
-        
-        new File(deployXMLPath.toString()).text = result
-        
-        generateRoutes()
-        projectRoot.toFile().renameTo( projectRoot.getParent().resolve("$name").toString() ) 
-        
+        projectManager.rename name, path
     }
     
-    def String indentXml(xml) {
-        def factory = TransformerFactory.newInstance()
-        factory.setAttribute("indent-number", 3);
-
-        Transformer transformer = factory.newTransformer()
-        transformer.setOutputProperty(OutputKeys.INDENT, 'yes')
-        StreamResult result = new StreamResult(new StringWriter())
-        transformer.transform(new StreamSource(new ByteArrayInputStream(xml.toString().bytes)), result)
-        return result.writer.toString()
-    }
-
     def generate( type, name, path = "." ) {
-
-        path = getProjectRoot path
+        path = projectManager.getProjectRoot path
 
         return scaffolder.generate( type, name, path )
 
     }
     
     def generateDoc( projectPath ) {
-        def projectRoot = getProjectRoot projectPath
+        def projectRoot = projectManager.getProjectRoot projectPath
         
         scaffolder.generateDoc projectRoot 
     }
     
     def generateRoutes( projectPath = '.' ) {
-        def projectRoot = getProjectRoot projectPath
+        def projectRoot = projectManager.getProjectRoot projectPath
 
         scaffolder.generateRoutes projectRoot
         
+    }
+
+    def verifyPack( pack, publicKey = null, signature = null ) {
+        digitalSignature.verifyPack pack, publicKey, signature
     }
 
     def deploy( projectPath, environment = 'dev' ) {
@@ -194,7 +78,7 @@ class Frapid {
             return remoteDeploy( projectPath, environment )
         } 
         
-        def projectRoot = getProjectRoot projectPath
+        def projectRoot = projectManager.getProjectRoot projectPath
         def configDir = projectRoot.resolve "config" 
         undeploy projectRoot        
         
@@ -222,7 +106,7 @@ class Frapid {
     
     def remoteDeploy( projectPath, env ) {
 
-        def projectRoot = getProjectRoot projectPath
+        def projectRoot = projectManager.getProjectRoot projectPath
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
         pack( projectPath, false )
         
@@ -258,10 +142,9 @@ class Frapid {
         
     }
 
-
     def undeploy( projectPath, environment = 'dev' ) {
 
-        def projectRoot = getProjectRoot projectPath
+        def projectRoot = projectManager.getProjectRoot projectPath
         
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
         def deployDir = Paths.get( config.envs."$environment".frapi.frapid , (String) app.name ).toFile()
@@ -270,15 +153,9 @@ class Frapid {
         
     }
 
-    def verifyPack( pack, publicKey = null, signature = null ) {
-
-        digitalSignature.verifyPack pack, publicKey, signature
-
-    }
-
     def pack( path = ".", sign = true ) {
 
-        path = getProjectRoot path
+        path = projectManager.getProjectRoot path
 
         def app = new XmlSlurper().parse( path.resolve( "config/deploy.xml").toString() )
         def ant = new AntBuilder()
@@ -372,7 +249,7 @@ class Frapid {
     
     def submit( username, projectPath = '.', env = 'prod' ) {
         
-        def projectRoot = getProjectRoot projectPath
+        def projectRoot = projectManager.getProjectRoot projectPath
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
         
         if( !checkName( app.name ) ) {
@@ -417,7 +294,6 @@ class Frapid {
         return true
         
     }
-    
     
     def saveApiIntoStore( packPath, username ) {
         
@@ -560,23 +436,14 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
 
     }
 
+    def String indentXml(xml) {
+        def factory = TransformerFactory.newInstance()
+        factory.setAttribute("indent-number", 3);
 
-    def getProjectRoot( path ) {
-      
-        path = Path.class.isInstance(path)? path : Paths.get( path.toString() ).toRealPath()
-                
-        if( !Files.isDirectory( path ) ) throw new IllegalArgumentException( "Invalid Path, not a directory " )
-
-        while ( Files.notExists( path.resolve(".frapid") ) ) {
-            if( !path.parent ) throw new IllegalArgumentException( "No Frapid project found" )
-            path = path.parent
-        }
-
-        return path
+        Transformer transformer = factory.newTransformer()
+        transformer.setOutputProperty(OutputKeys.INDENT, 'yes')
+        StreamResult result = new StreamResult(new StringWriter())
+        transformer.transform(new StreamSource(new ByteArrayInputStream(xml.toString().bytes)), result)
+        return result.writer.toString()
     }
-
-
-
-
-
 }

@@ -1,8 +1,8 @@
-class ServiceLocator {
+@Singleton class ServiceLocator {
 
     private services, instances
 
-    def ServiceLocator() {
+    private ServiceLocator() {
 
         instances = [:]
         services = [:]
@@ -11,6 +11,7 @@ class ServiceLocator {
         services.scaffolder = ScaffolderService
         services.digitalSignature = DigitalSignatureService
         services.projectManager = ProjectManager
+        services.deployer = DeployerService
 
     }
 
@@ -30,8 +31,5 @@ class ServiceLocator {
         instances[service_name]
 
     }
-
-
-
 
 }

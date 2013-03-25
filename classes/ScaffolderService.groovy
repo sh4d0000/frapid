@@ -6,19 +6,22 @@ import groovy.xml.MarkupBuilder
 
 class ScaffolderService {
 
-    def config, serviceLocator
+    def config, serviceLocator, projectManager
 
     def ScaffolderService() {
 
        def frapidPath = System.getenv()["FRAPID_HOME"]
        config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
   
-       serviceLocator = new ServiceLocator()
+       serviceLocator = ServiceLocator.instance
 
     }
   
 
-    def generate( type, name, projectRoot = "." ) {
+    def generate( type, name, projectPath = "." ) {
+
+        def projectManager = serviceLocator.get 'projectManager'
+        def projectRoot = projectManager.getProjectRoot projectPath
 
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
                 
@@ -36,7 +39,10 @@ class ScaffolderService {
 
     }
 
-    def generateRoutes( projectRoot = '.' ) {
+    def generateRoutes( projectPath = '.' ) {
+        
+        def projectManager = serviceLocator.get 'projectManager'
+        def projectRoot = projectManager.getProjectRoot projectPath
         
         def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
         
@@ -129,7 +135,10 @@ class ScaffolderService {
         
     }
 
-    def generateDoc( projectRoot ) {
+    def generateDoc( projectPath ) {
+
+        def projectManager = serviceLocator.get 'projectManager'
+        def projectRoot = projectManager.getProjectRoot projectPath
         
         def ant = new AntBuilder()
         ant.project.getBuildListeners().each{ it.setOutputPrintStream(new PrintStream('/dev/null')) }

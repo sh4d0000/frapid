@@ -1,14 +1,18 @@
 import groovy.xml.StreamingMarkupBuilder
-
 import java.nio.file.Paths 
 import java.nio.file.Path 
 import java.nio.file.Files
 
+import javax.xml.transform.stream.StreamResult
+import javax.xml.transform.stream.StreamSource
+import javax.xml.transform.Transformer
+import javax.xml.transform.TransformerFactory
+import javax.xml.transform.OutputKeys
 
 class ProjectManager {
 
     def dirs, config
-    def serviceLocator, scaffolder
+    def serviceLocator, scaffolder 
 
     def ProjectManager() {
 
@@ -17,7 +21,7 @@ class ProjectManager {
         def frapidPath = System.getenv()["FRAPID_HOME"]
         config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
   
-        serviceLocator = new ServiceLocator()
+        serviceLocator = ServiceLocator.instance
        	scaffolder = serviceLocator.get 'scaffolder'
 
     }
@@ -122,7 +126,9 @@ class ProjectManager {
     def rename( name, path = '.' ) {
         
         def projectRoot = getProjectRoot path
-        undeploy projectRoot  
+
+       	def deployer = serviceLocator.get 'deployer'
+        deployer.undeploy projectRoot  
         
         def deployXMLPath = projectRoot.resolve("config/deploy.xml")
         def deployXML = new XmlSlurper().parse( deployXMLPath.toString() )
@@ -153,5 +159,15 @@ class ProjectManager {
         return path
     }
 
+    def String indentXml(xml) {
+        def factory = TransformerFactory.newInstance()
+        factory.setAttribute("indent-number", 3);
+
+        Transformer transformer = factory.newTransformer()
+        transformer.setOutputProperty(OutputKeys.INDENT, 'yes')
+        StreamResult result = new StreamResult(new StringWriter())
+        transformer.transform(new StreamSource(new ByteArrayInputStream(xml.toString().bytes)), result)
+        return result.writer.toString()
+    }
 
 }

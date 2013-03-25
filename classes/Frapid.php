@@ -16,7 +16,7 @@ class RoutesXmlFilter extends RecursiveFilterIterator {
 
 }
 
-class Frapid {
+class HTTPManager {
 
     public function getUri() {
 
@@ -43,6 +43,60 @@ class Frapid {
 
         return $uri[1];
 
+    }
+
+}
+
+class ComponentsManager {
+
+    private $httpManager;
+
+    public function __construct() {
+        $this->httpManager = new HTTPManager();
+    }
+
+    public function xmlstr_to_array($xmlstr) {
+        $doc = new DOMDocument();
+        $doc->loadXML($xmlstr);
+        return $this->domnode_to_array($doc->documentElement);
+    }
+
+    public function domnode_to_array($node) {
+        $output = array();
+        switch ($node->nodeType) {
+            case XML_CDATA_SECTION_NODE:
+            case XML_TEXT_NODE:
+                $output = trim($node->textContent);
+                break;
+            case XML_ELEMENT_NODE:
+                for ($i = 0, $m = $node->childNodes->length; $i < $m; $i++) {
+                    $child = $node->childNodes->item($i);
+                    $v = $this->domnode_to_array($child);
+                    if (isset($child->tagName)) {
+                        $t = $child->tagName;
+                        if (!isset($output[$t])) {
+                            $output[$t] = array();
+                        }
+                        $output[$t][] = $v;
+                    } elseif ($v) {
+                        $output = (string) $v;
+                    }
+                }
+                if (is_array($output)) {
+                    if ($node->attributes->length) {
+                        foreach ($node->attributes as $attrName => $attrNode) {
+                            $output[$attrName] = (string) $attrNode->value;
+                        }
+                    }
+                    foreach ($output as $t => $v) {
+                        if (is_array($v) && count($v) == 1 && $t != '@attributes') {
+                            $output[$t] = $v[0];
+                        }
+                    }
+                }
+                break;
+        }
+        return $output;
     }
 
     public function getRouteMap() {
@@ -91,12 +145,19 @@ class Frapid {
         return $routeMap;
     }
 
+    public function executeComponentMethodByUri($uri) {
+
+        $compPath = $this->getComponentPath($uri);
+        $component = new $compPath[0];
+        return $component->$compPath[1]();
+    }
+
     public function getComponentPath($uri) {
 
         $routeMap = $this->getRouteMap();
         $comp_path = null;
         $params = array();
-        parse_str($this->getQueryString(), $params);
+        parse_str($this->httpManager->getQueryString(), $params);
 
         if (isset($routeMap[$uri])) {
             $comp_path = $routeMap[$uri];
@@ -134,6 +195,42 @@ class Frapid {
 
         $comp_path = explode("#", $comp_path);
         return array("path" => $comp_path, "params" => $params);
+    }
+
+}
+
+class Frapid {
+
+    private $httpManager;
+    private $componentsManager;
+
+    public function __construct() {
+        $this->httpManager = new HTTPManager();
+        $this->componentsManager = new ComponentsManager();
+    }
+
+    public function getUri() {
+        return $this->httpManager->getUri();
+    }
+
+    public function getHTTPMethod() {
+        return $this->httpManager->getHTTPMethod();
+    }
+
+    public function getQueryString() {
+        return $this->httpManager->getQueryString();
+    }
+
+    public function getRouteMap() {
+        return $this->componentsManager->getRouteMap();
+    }
+
+    public function executeComponentMethodByUri($uri) {
+        return $this->componentsManager->executeComponentMethodByUri( $uri );
+    }
+
+    public function getComponentPath($uri) {
+        return $this->componentsManager->getComponentPath( $uri );
     }
 
     public function check_token() {
@@ -185,59 +282,8 @@ class Frapid {
     public function get_frapi_config() {
 
         $string = file_get_contents(CUSTOM_PATH . DIRECTORY_SEPARATOR . 'frapid' . DIRECTORY_SEPARATOR . 'frapi_conf.xml');
-        $config = $this->xmlstr_to_array($string);
+        $config = $this->componentsManager->xmlstr_to_array($string);
         return $config;
-    }
-
-    public function executeComponentMethodByUri($uri) {
-
-        $compPath = $this->getComponentPath($uri);
-        $component = new $compPath[0];
-        return $component->$compPath[1]();
-    }
-
-    public function domnode_to_array($node) {
-        $output = array();
-        switch ($node->nodeType) {
-            case XML_CDATA_SECTION_NODE:
-            case XML_TEXT_NODE:
-                $output = trim($node->textContent);
-                break;
-            case XML_ELEMENT_NODE:
-                for ($i = 0, $m = $node->childNodes->length; $i < $m; $i++) {
-                    $child = $node->childNodes->item($i);
-                    $v = $this->domnode_to_array($child);
-                    if (isset($child->tagName)) {
-                        $t = $child->tagName;
-                        if (!isset($output[$t])) {
-                            $output[$t] = array();
-                        }
-                        $output[$t][] = $v;
-                    } elseif ($v) {
-                        $output = (string) $v;
-                    }
-                }
-                if (is_array($output)) {
-                    if ($node->attributes->length) {
-                        foreach ($node->attributes as $attrName => $attrNode) {
-                            $output[$attrName] = (string) $attrNode->value;
-                        }
-                    }
-                    foreach ($output as $t => $v) {
-                        if (is_array($v) && count($v) == 1 && $t != '@attributes') {
-                            $output[$t] = $v[0];
-                        }
-                    }
-                }
-                break;
-        }
-        return $output;
-    }
-
-    public function xmlstr_to_array($xmlstr) {
-        $doc = new DOMDocument();
-        $doc->loadXML($xmlstr);
-        return $this->domnode_to_array($doc->documentElement);
     }
 
 }

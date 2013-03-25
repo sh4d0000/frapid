@@ -13,14 +13,14 @@ import java.nio.file.Files
 
 class DigitalSignatureService {
 
-    def config, serviceLocator
+    def config, serviceLocator, deployer
 
     def DigitalSignatureService() {
 
        def frapidPath = System.getenv()["FRAPID_HOME"]
        config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
   
-       serviceLocator = new ServiceLocator()
+       serviceLocator = ServiceLocator.instance
 
     }
 
@@ -39,7 +39,8 @@ class DigitalSignatureService {
             Files.deleteIfExists tmpPack
             Files.deleteIfExists tmpSignature
             
-            unpack pack, config.frapid.tmp
+            deployer = serviceLocator.get 'deployer'
+            deployer.unpack pack, config.frapid.tmp
             
             pack = tmpPack
             signature = tmpSignature
@@ -51,7 +52,7 @@ class DigitalSignatureService {
         def pubKeyPath = Paths.get( config.frapid.keyDir , "public.key")
         if( publicKey ) pubKeyPath = Paths.get( publicKey )
       
-        publicKey = digitalSignature.getPublicKey pubKeyPath.toFile()
+        publicKey = getPublicKey pubKeyPath.toFile()
         def signatureManager = Signature.getInstance("SHA1withRSA");
         signatureManager.initVerify publicKey
 

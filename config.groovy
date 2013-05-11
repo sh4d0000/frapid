@@ -33,7 +33,7 @@ envs {
 
    prod {
       type = 'remote'
-      uri = '192.168.0.106:4444'
+      uri = 'api2.uniparthenope.it:4444'
    }
 }
 

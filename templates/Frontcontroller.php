@@ -43,7 +43,8 @@ class Action_Frontcontroller extends Frapi_Action implements Frapi_Action_Interf
         }
         
         $component = $frapid->getComponentPath( $httpMethod.":".$uri);
-        $result = call_user_func_named_array($component["path"], $component["params"]);
+        $params = array_merge( $this->getParams(), $component["params"]);
+        $result = call_user_func_named_array($component["path"], $params);
 
         if (is_scalar($result)) {
             $result = array("data" => $result);

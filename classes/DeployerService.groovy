@@ -31,7 +31,6 @@ class DeployerService {
         undeploy projectRoot        
         
         scaffolder.generateRoutes projectRoot 
-        scaffolder.generateDoc projectRoot 
         
         def app = new XmlSlurper().parse( configDir.resolve( "deploy.xml").toString() )
 	def deployDir
@@ -42,6 +41,7 @@ class DeployerService {
             def componentsDeploy = createDir( deployDir.resolve('components') )
 	    copy configDir, deployDir, 'routes.xml', 'config.xml'
             def libDeploy = createDir deployDir.resolve('lib')
+            def modelDeploy = createDir deployDir.resolve('model')
 
         
             projectRoot.resolve('lib').toFile().eachFileMatch( ~/.*\.php/ ) { lib ->
@@ -50,6 +50,10 @@ class DeployerService {
                
             projectRoot.resolve("components").toFile().eachFileMatch( ~/.*\.php/ ) { component ->
                  copy component.absolutePath, componentsDeploy.resolve( component.name )
+            }
+
+            projectRoot.resolve("model").toFile().eachFileMatch( ~/.*\.php/ ) { model ->
+                 copy model.absolutePath, modelDeploy.resolve( model.name )
             }
 
   	}

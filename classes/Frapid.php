@@ -156,13 +156,15 @@ class ComponentsManager {
 
         $routeMap = $this->getRouteMap();
         $comp_path = null;
-        $params = array();
+        $params = null;
         parse_str($this->httpManager->getQueryString(), $params);
 
         if (isset($routeMap[$uri])) {
             $comp_path = $routeMap[$uri];
         } else {
             foreach ($routeMap as $uriRoute => $path) {
+
+                $params = array();
 
                 $uri_ = array_filter(explode('/', $uri));
                 $uriRoute = array_filter(explode('/', $uriRoute));
@@ -179,13 +181,11 @@ class ComponentsManager {
                     
                     if ($segmentRoute[0] == ':') {
                         $params[substr($segmentRoute, 1)] = $segment;
-                        if ($i == ($length - 1) ) {
-                            $comp_path = $path;
-                            break 2;
-                        }
                     } else if ($segment != $segmentRoute) {
                         break;
-                    } else if ($i == $length) {
+                    }
+
+                    if ($i == ($length - 1) ) {
                         $comp_path = $path;
                         break 2;
                     }

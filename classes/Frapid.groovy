@@ -1,6 +1,6 @@
 import java.nio.file.Paths 
 //import java.nio.file.Path 
-//import java.nio.file.Files
+import java.nio.file.Files
 
 // import java.security.*
 
@@ -29,8 +29,8 @@ class Frapid {
 
     }
 
-    def createProject( name, path = ".", force = false ) {
-        projectManager.createProject name, path, force
+    def createProject( name, path = "." ) {
+        projectManager.createProject name, path
     }
 
     def checkName( name = null, path = "."  ) {
@@ -89,87 +89,6 @@ class Frapid {
 	deployer.submit username, projectPath, env
     }
 
-    def saveApiIntoStore( packPath, username ) {
-        
-        // sposta file in private dir
-        packPath = copy packPath.parent, config.drupal.privateFileSystem.toString(), packPath.toFile().name
-        def packFile = packPath.toFile()
-        
-        def frapiConfPath = Paths.get( config.frapid.home, config.frapid.frapiConfigFile )
-        
-        def frapiConf = new XmlSlurper().parse( frapiConfPath.toString() )
-        def db = frapiConf.database
-        
-        def driverURL = new File( config.frapid.mysqlDriver ).toURL()
-        this.getClass().classLoader.rootLoader.addURL( driverURL )
-        
-        def sql = groovy.sql.Sql.newInstance("jdbc:mysql://$db.url", db.username.toString(), db.password.toString() )
-        
-        def userId = getUserIdBy username, sql
-        def uri = new String("private://$packFile.name".getBytes(), "UTF-8")
-        def currentTime = new java.sql.Date( System.currentTimeMillis() ) 
-        
-        // la tabella ha come timestamp un long di 10, ja
-        currentTime = ((currentTime.time / 1000).toLong())
-        
-        def record = [
-            uid: userId, 
-            filename: packFile.name, 
-            uri: uri, 
-            filemime: 'application/octet-stream', 
-            filesize: packFile.size(), 
-            status: 1, 
-            timestamp: currentTime
-        ]
-        
-        def insertSql = """
-insert into file_managed( uid, filename, uri, filemime, filesize, status, timestamp)
-values( :uid, :filename, :uri, :filemime, :filesize, :status, :timestamp )
-"""
-        // salva file in managed file table
-        def recordInserted = sql.executeInsert( insertSql, record)
-        
-        def projectName = packFile.name.split('_api')[0]
-        
-        // salva api in api table
-        record = [
-            name: projectName, 
-            user_id: userId, 
-            status: 'PENDING', 
-            fid: recordInserted[0][0],
-            sku: projectName
-        ]
-        
-        def api = sql.dataSet( 'api' )
-        api.add record 
-    }
-    
-    def getPublicKeyBy( username ) {
-        
-        def frapiConfPath = Paths.get( config.frapid.home, config.frapid.frapiConfigFile )
-        
-        def frapiConf = new XmlSlurper().parse( frapiConfPath.toString() )
-        def db = frapiConf.database
-        
-        def driverURL = new File( config.frapid.mysqlDriver ).toURL()
-        this.getClass().classLoader.rootLoader.addURL( driverURL )
-        
-        def sql = groovy.sql.Sql.newInstance("jdbc:mysql://$db.url", db.username.toString(), db.password.toString() )
-        
-        def keyPath
-        sql.eachRow("""SELECT f.uri 
-FROM users u, apiuser p, file_managed f
-WHERE p.public_key = f.fid
-AND u.uid = p.user_id
-AND u.name = $username""") { row ->
-            keyPath = row[0].split('public://')[1]
-        }
-        
-        
-        return keyPath? Paths.get( config.drupal.publicFileSystem, keyPath ) : false
-        
-    }
-    
     def getUserIdBy( username, sql ) {
         
         def userId
@@ -180,7 +99,6 @@ AND u.name = $username""") { row ->
         return userId
         
     }
-
 
     def config( environment = 'dev') {
 

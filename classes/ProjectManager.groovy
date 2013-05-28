@@ -16,7 +16,7 @@ class ProjectManager {
 
     def ProjectManager() {
 
-        dirs = ["components", "lib", "config", "tmp", "media", "dist", "docs"];
+        dirs = ["components", "lib", "config", "tmp", "media", "dist", "docs", "model"];
 
         def frapidPath = System.getenv()["FRAPID_HOME"]
         config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
@@ -26,11 +26,7 @@ class ProjectManager {
 
     }
 
-    def createProject( name, path = ".", force = false ) {
-
-        if( !force && !checkName(name) ) {
-            return false
-        }
+    def createProject( name, path = "." ) {
 
         def projectRootPath = Paths.get path, name
         def toCreate = [ projectRootPath ]
@@ -62,46 +58,9 @@ class ProjectManager {
 
         scaffolder.generate( "business_component", "SampleComponent", projectRootPath )
 
-        def keyDir = Paths.get config.frapid.keyDir
-        if( Files.notExists( keyDir.resolve( "public.key" ) ) || Files.notExists( keyDir.resolve( "private.key") ) ) {
-            digitalSignature.generateKeys()
-        }
-
         return true
-
     }
 
-    def checkName( name = null, path = "."  ) {
-        
-        if( !name ) {
-            def projectRoot = getProjectRoot path
-            def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
-            name = app.name
-        }
-        
-        def nameAvailable = false
-        
-        def uri = config.envs.prod.uri.split(':')
-        def s = new Socket( uri[0], uri[1].toInteger() );
-        
-        s.withStreams { input, output ->
-            
-            output << "checkName $name\n"
-
-            def reader = input.newReader()
-            def buffer = reader.readLine()
-            
-            nameAvailable = buffer=='ok'? true :false
-                                     
-            buffer = reader.readLine()
-            if(buffer == 'bye') {
-                //println "Terminato"
-            }
-        }
-        
-        return nameAvailable
-    }
-    
     def isProjectNameAvailable( name ) {
         
         def frapiConfPath = Paths.get( config.frapid.home, config.frapid.frapiConfigFile )

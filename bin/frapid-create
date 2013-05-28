@@ -3,7 +3,6 @@
 def cli = new CliBuilder(usage: 'frapid-create projectName -f')
 
 cli.p( longOpt: 'path', 'Project path')
-cli.f( longOpt: 'force', 'Force creation of the project')
 
 def opt = cli.parse(args)
 
@@ -12,25 +11,11 @@ if ( opt.h || opt.arguments().isEmpty() ) {
    return
 }
 
-def path = ".", force = false
-
-if( opt.arguments().contains("-f") ) {
-    force = true
-}
+def path = "."
 
 println("Creating new project...")
 
 def frapid = new Frapid()
 
-try {
-
-    def result = frapid.createProject( opt.arguments()[0], path, force )
-
-    result? println("Project created") : println("Project NOT created, Project name not available on API store\n"
-    + "use 'frapid-create projectName -f' to force creation\nto rename the project after creation use 'frapid-rename projectName' ")
-
-} catch( SocketException e ) {
-
-    println "Cannot estabilsh a connection to the server in this moment.\nPlease try later or use 'frapid-create projectName -f' to force creation"
-
-}
+def result = frapid.createProject( opt.arguments()[0], path )
+result? println("Project created") : println("Project NOT created, something went wrong!")

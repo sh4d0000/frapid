@@ -4,17 +4,27 @@ class MissingArgumentException extends Exception {
     
 }
 
-function call_user_func_named_array($method, $arr = array()) {
-    
+function call_user_func_named_array($method, array $arr = array()) {
+
     $ref = new ReflectionMethod($method[0], $method[1]);
     $params = array();
-    foreach ($ref->getParameters() as $p) {
-        if (!$p->isOptional() and !isset($arr[$p->name]))
-            throw new MissingArgumentException("Missing parameter $p->name");
-        if (!isset($arr[$p->name]))
-            $params[] = $p->getDefaultValue();
-        else
-            $params[] = $arr[$p->name];
+
+    $method_params = $ref->getParameters();
+
+    foreach ($method_params as $p) {
+
+        #var_dump( $p->name .' '. $p->getPosition() .' '. $p->isArray() );
+        if( $p->getPosition() == 0 && $p->isArray()) {
+          $params[] = $arr;
+        } else {
+           if (!$p->isOptional() and !isset($arr[$p->name])) {
+              throw new MissingArgumentException("Missing parameter $p->name");
+           } if (!isset($arr[$p->name])) {
+              $params[] = $p->getDefaultValue();
+           } else {
+              $params[] = $arr[$p->name];
+           }
+        }
     }
 
     $class = new ReflectionClass($method[0]);

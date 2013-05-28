@@ -36,9 +36,3 @@ envs {
       uri = 'api2.uniparthenope.it:4444'
    }
 }
-
-drupal {
-    home = System.getenv()["DRUPAL_HOME"]
-    privateFileSystem = home + File.separator + "sites/default/private"
-    publicFileSystem = home + File.separator + "sites/default/files"
-}

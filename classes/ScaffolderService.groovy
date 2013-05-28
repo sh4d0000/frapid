@@ -135,22 +135,6 @@ class ScaffolderService {
         
     }
 
-    def generateDoc( projectPath ) {
-
-        def projectManager = serviceLocator.get 'projectManager'
-        def projectRoot = projectManager.getProjectRoot projectPath
-        
-        def ant = new AntBuilder()
-        ant.project.getBuildListeners().each{ it.setOutputPrintStream(new PrintStream('/dev/null')) }
-        
-        """phpdoc -d ${projectRoot.toString()}/components/ -t ${projectRoot.toString()}/docs/""".execute()
-        
-        ant.tar( destFile: "${projectRoot.toString()}/dist/docs.tar.gz", compression: "gzip" ) {
-            tarfileset ( dir: "${projectRoot.toString()}/docs/" , prefix: "docs" )
-        }
-        
-    }
-
     def camelize(String self) {
         self.split("_").collect() { it.substring(0, 1).toUpperCase() + it.substring(1, it.length()) }.join()
     }

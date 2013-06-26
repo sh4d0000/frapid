@@ -6,10 +6,11 @@ import static java.nio.file.StandardCopyOption.*
 
 class FileSystemService {
 
+    protected static final String DEFAULT_PERMISSIONS = "rwxrwxrwx"
+
     def copy(from, to, String... fileNames = null ) {
 
-        def perms = PosixFilePermissions.fromString "rwxrwxrwx"
-        def attr  = PosixFilePermissions.asFileAttribute perms
+        def perms = PosixFilePermissions.fromString DEFAULT_PERMISSIONS
         def fileCopied = null
 
         def fromPath = Path.class.isInstance(from)? from : Paths.get(from.toString())
@@ -35,7 +36,6 @@ class FileSystemService {
             return filesCopied.size() == 1? filesCopied[0] : filesCopied
         }
 
-        return toPath
     }
 
     def createDir( dir, defaultPermission = true ) {
@@ -44,8 +44,7 @@ class FileSystemService {
         Files.createDirectory dirPath
 
         if( defaultPermission ) {
-            def perms = PosixFilePermissions.fromString 'rwxrwxrwx'
-            def attr = PosixFilePermissions.asFileAttribute perms
+            def perms = PosixFilePermissions.fromString DEFAULT_PERMISSIONS
             Files.setPosixFilePermissions dirPath, perms
         }
 

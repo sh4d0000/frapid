@@ -13,27 +13,46 @@ import java.util.concurrent.ExecutionException
 
 class Frapid {
 
+    protected static final String PROJECT_MANAGER = 'projectManager'
+    protected static final String SCAFFOLDER = 'scaffolder'
+    protected static final String DIGITAL_SIGNATURE = 'digitalSignature'
+    protected static final String COMPONENTS_DIR_NAME = 'components'
+    protected static final String RUOTES_FILE_NAME = 'routes.xml'
+    protected static final String CONFIG_FILE_NAME = 'config.xml'
+    protected static final String LIB_DIR_NAME = 'lib'
+    protected static final String CONFIG_DIR_NAME = 'config'
+    protected static final String MODEL_DIR_NAME = 'model'
+    protected static final String TEMP_DIR_NAME = 'tmp'
+    protected static final String DIST_DIR_NAME = 'dist'
+    protected static final String MEDIA_DIR_NAME = 'media'
+    protected static final String DOCS_DIR_NAME = 'docs'
+    protected static final String DEPLOY_FILE_NAME = 'deploy.xml'
+    protected static final String DEPLOYER = 'deployer'
+    protected static final String DEFAULT_PATH = "."
+    protected static final String DEV_ENV = 'dev'
+    protected static final String REMOTE_ENV = 'remote'
+
     def config, serviceLocator
     def scaffolder, digitalSignature, projectManager, deployer
-   
+
     def Frapid() {
 
         def frapidPath = System.getenv()["FRAPID_HOME"]
         config = new ConfigSlurper().parse( new File( "${frapidPath}/config.groovy" ).toURL() )
 
         serviceLocator = ServiceLocator.instance 
-        deployer = serviceLocator.get 'deployer'
-        projectManager = serviceLocator.get 'projectManager'
-        scaffolder = serviceLocator.get 'scaffolder'
-        digitalSignature = serviceLocator.get 'digitalSignature'
+        deployer = serviceLocator.get DEPLOYER
+        projectManager = serviceLocator.get PROJECT_MANAGER
+        scaffolder = serviceLocator.get SCAFFOLDER
+        digitalSignature = serviceLocator.get DIGITAL_SIGNATURE
 
     }
 
-    def createProject( name, path = "." ) {
+    def createProject( name, path = DEFAULT_PATH) {
         projectManager.createProject name, path
     }
 
-    def checkName( name = null, path = "."  ) {
+    def checkName( name = null, path = DEFAULT_PATH  ) {
         projectManager.checkName name, path
     }
     
@@ -45,7 +64,7 @@ class Frapid {
         projectManager.rename name, path
     }
     
-    def generate( type, name, path = "." ) {
+    def generate( type, name, path = DEFAULT_PATH ) {
         scaffolder.generate( type, name, path )
     }
     
@@ -65,59 +84,31 @@ class Frapid {
         digitalSignature.verifyPack pack, publicKey, signature
     }
 
-    def deploy( projectPath, environment = 'dev' ) {
+    def deploy( projectPath, environment = DEV_ENV ) {
 	deployer.deploy projectPath, environment
     }
 
-    def undeploy( projectPath, environment = 'dev' ) {
+    def undeploy( projectPath, environment = DEV_ENV ) {
 	deployer.undeploy projectPath, environment
-    }
-    
-    def pack( path = ".", sign = true ) {
-	deployer.pack path, sign
-    }
-
-    def unpack( file, path = "." ) {
-	deployer.unpack file, path
     }
 
     def publish( pack, env = 'dev', destination = '/tmp/proj/'){
-	deployer.publish pack, env, destination
+        deployer.publish pack, env, destination
     }
 
-    def submit( username, projectPath = '.', env = 'prod' ) {
-	deployer.submit username, projectPath, env
+    def pack( path = DEFAULT_PATH, sign = true ) {
+	deployer.pack path, sign
     }
 
-    def getUserIdBy( username, sql ) {
-        
-        def userId
-        sql.eachRow("SELECT uid FROM users WHERE name = $username") { row ->
-            userId = row[0]
-        }
-        
-        return userId
-        
+    def unpack( file, path = DEFAULT_PATH ) {
+	deployer.unpack file, path
     }
 
-    def config( environment = 'dev') {
+    def config( environment = DEV_ENV) {
 
-        def FRAPI_PATH = System.getenv()["FRAPI_PATH"]
-
-        if( !Files.exists( Paths.get(FRAPI_PATH) ) ) {
-
-		def apiPort=10220, adminPort=10221
-		installFrapi(adminPort, apiPort)
-		println "-------------------------------"
-		println "frapi and nginx installed"
-		println "frapi API responds from port $apiPort"
-		println "Nginx *MUST* be started manually"
-	}
-        
         def frapiConf = config.envs."$environment".frapi
         
-        // sostituisci main controller
-        def templatesDir = Paths.get config.frapid.templates 
+        def templatesDir = Paths.get config.frapid.templates
         serviceLocator.fileSystem {
             copy templatesDir, frapiConf.main_controller, 'Main.php'
 
@@ -144,9 +135,6 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
             copy config.frapid.classes, frapiConf.frapid , "Frapid.php"
         }
 
-        
-        def p = serviceLocator.fileSystem { copy config.frapid.home, frapiConf.frapid, config.frapid.frapiConfigFile }
-
     }
 
     def unconfig( environment = 'dev') {
@@ -160,176 +148,13 @@ foreach (new RecursiveIteratorIterator( $it ) as $fileInfo) {
 
     }
 
-   def installFrapi(adminPort, apiPort) {
-		println 'installing frapi'
-
-		def HOME = System.getenv()["HOME"]
-		def WORKSPACE = "$HOME"
-		def ADMIN_FRAPI_PORT = adminPort
-		def API_FRAPI_PORT = apiPort
-
-		def commands = """mkdir $WORKSPACE/opt
-mkdir $WORKSPACE/dist"""
-		def exitCode = execute commands
-
-		println "------------EXIT CODE-----------"
-		println "$exitCode"
-		println "--------------------------------"
-
-		commands = """wget http://nginx.org/download/nginx-1.2.1.tar.gz
-tar -xvzf nginx-1.2.1.tar.gz
-rm nginx-1.2.1.tar.gz"""
-
-		exitCode = execute commands, "$WORKSPACE/dist"
-
-		println "------------EXIT CODE-----------"
-		println "$exitCode"
-		println "--------------------------------"
-
-		commands = """mkdir $WORKSPACE/opt/nginx-1.2.1
-./configure --prefix=$WORKSPACE/opt/nginx-1.2.1
-make 2>&1 | tee make.log
-make install 2>&1 | tee install.log"""
-
-		exitCode = execute commands, "$WORKSPACE/dist/nginx-1.2.1"
-
-		println "------------EXIT CODE-----------"
-		println "$exitCode"
-		println "--------------------------------"
-
-		commands = """git clone git://github.com/frapi/frapi.git"""
-
-		exitCode = execute commands, "$WORKSPACE/opt"
-
-		println "------------EXIT CODE-----------"
-		println "$exitCode"
-		println "--------------------------------"
-
-		def FRAPI_PATH = "$WORKSPACE/opt/frapi/"
-
-		commands = """chmod ugo+x setup.sh
-./setup.sh
-mkdir -p $FRAPI_PATH/log/nginx/admin.frapi
-mkdir -p $FRAPI_PATH/log/nginx/api.frapi"""
-
-		exitCode = execute commands, FRAPI_PATH
-
-		println "------------EXIT CODE-----------"
-		println "$exitCode"
-		println "--------------------------------"
-
-		def file = new File("$WORKSPACE/opt/nginx-1.2.1/conf/nginx.conf")
-		file.delete()
-		file.createNewFile()  
-
-		file << """worker_processes  1;
-
-events {
-    worker_connections  1024;
-}
-
-
-http {
-    include       mime.types;
-    default_type  application/octet-stream;
-
-    sendfile        on;
-
-    keepalive_timeout  65;
-
-    server {
-      listen   $ADMIN_FRAPI_PORT;
-      server_name  admin.frapi;
-      access_log  $FRAPI_PATH/log/nginx/admin.frapi/access.log;
-
-      root   $FRAPI_PATH/src/frapi/admin/public;
-      index index.php;
-
-      location / {
-        try_files \$uri \$uri/ @api;
-      }
-
-      location @api {
-        rewrite ^/(.*)\$ /index.php?\$1 last;
-      }
-
-      location ~ \\.php\$ {
-        fastcgi_pass   127.0.0.1:9000;
-        fastcgi_index  index.php;
-        fastcgi_param  SCRIPT_FILENAME  $FRAPI_PATH/src/frapi/admin/public/\$fastcgi_script_name;
-        include fastcgi_params;
-      }
-   }
-
-server {
-    listen   $API_FRAPI_PORT;
-    server_name  api.frapi;
-    access_log  $FRAPI_PATH/log/nginx/api.frapi/access.log;
-
-    root     $FRAPI_PATH/src/frapi/public;
-    index    index.php;
-
-    location ~* ^.+\\.(jpg|js|jpeg|png|ico|gif|js|css|swf)\$ {
-        expires 24h;
-    }
-
-    location / {
-        try_files \$uri \$uri/ @api;
-    }
-
-    location @api {
-        rewrite  ^/(.*)\$  /index.php?\$1  last;
-    }
-
-    location ~ ^/.*\\.php\$ {
-        fastcgi_pass   127.0.0.1:9000;
-        fastcgi_index  index.php;
-        fastcgi_param  SCRIPT_FILENAME  $FRAPI_PATH/src/frapi/public/\$fastcgi_script_name;
-        include fastcgi_params;
-    }
-}
-}
-"""
-
-		file = new File("$WORKSPACE/opt/nginx-1.2.1/conf/fastcgi.conf")
-		file.delete()
-		file.createNewFile()  
-
-		file << """fastcgi_param SCRIPT_NAME \$fastcgi_script_name;
-fastcgi_param  QUERY_STRING       \$query_string;
-fastcgi_param  REQUEST_METHOD     \$request_method;
-fastcgi_param  CONTENT_TYPE       \$content_type;
-fastcgi_param  CONTENT_LENGTH     \$content_length;
-
-fastcgi_param  SCRIPT_NAME        \$fastcgi_script_name;
-fastcgi_param  REQUEST_URI        \$request_uri;
-fastcgi_param  DOCUMENT_URI       \$document_uri;
-fastcgi_param  DOCUMENT_ROOT      \$document_root;
-fastcgi_param  SERVER_PROTOCOL    \$server_protocol;
-fastcgi_param  HTTPS              \$https if_not_empty;
-
-fastcgi_param  GATEWAY_INTERFACE  CGI/1.1;
-fastcgi_param  SERVER_SOFTWARE    nginx/\$nginx_version;
-
-fastcgi_param  REMOTE_ADDR        \$remote_addr;
-fastcgi_param  REMOTE_PORT        \$remote_port;
-fastcgi_param  SERVER_ADDR        \$server_addr;
-fastcgi_param  SERVER_PORT        \$server_port;
-fastcgi_param  SERVER_NAME        \$server_name;"""
-
-
-	}
-
-
-	def execute( commands, workingDir = System.properties.'user.dir' ) {
+   	def execute( commands, workingDir = System.properties.'user.dir' ) {
 
 		workingDir = new File( workingDir )
 		commands.eachLine() { executeOnShell it, workingDir }
 	}
 
 	def executeOnShell( command, workingDir) {
-
-		println "executing command: $command"
 
 		def process = new ProcessBuilder(addShellPrefix(command))
 				.directory(workingDir)
@@ -342,7 +167,7 @@ fastcgi_param  SERVER_NAME        \$server_name;"""
 		def exitValue = process.exitValue()
 
 		if( exitValue != 0 ) {
-			throw new ExecutionException ( "Something gone wrong. Contact system administrator." )
+			throw new ExecutionException ( "Something went wrong. Contact system administrator." )
 		}
 
 		return exitValue

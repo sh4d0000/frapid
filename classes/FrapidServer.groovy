@@ -47,48 +47,6 @@ def publish( args, input, output ) {
     output.flush()
 } 
 
-def submit( args, input, output ) {
-    
-    def (env, packName, sizePack, username) = args
-    println "start submit"
-
-    output << 'ok\n'
-    output.flush()
-    def packPath = receiveFile( Paths.get(config.frapid.tmp.toString(), packName), input, sizePack.toInteger() )
-
-    println "file ricevuti"
-   
-    def frapid = new Frapid()
-    def pubKeyPath = frapid.getPublicKeyBy username
-        
-    if( !pubKeyPath ) {
-        output << 'Cannot find public key\n'
-        return;
-    } else if( !frapid.verifyPack( packPath.toString(), pubKeyPath.toString() ) ) {
-        output << 'Not valid signature\n'
-        return;
-    }
-    
-    println "saveinstore invocation" 
-    frapid.saveApiIntoStore( packPath, username )
-
-    output << 'bye\n'
-    output.flush()    
-}
-
-def checkName( args, input, output ) {
-    
-    def (name) = args
-    
-    def frapid = new Frapid()
-    def response = frapid.isProjectNameAvailable( name )? 'ok\n' : 'ko\n'
-    
-    output << response
-    output << 'bye\n'
-    output.flush()
-    
-}
-
 def receiveFile( path, input, size) {
     
     Files.deleteIfExists(path)

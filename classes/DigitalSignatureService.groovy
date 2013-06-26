@@ -11,7 +11,13 @@ import java.nio.file.Paths
 import java.nio.file.Path 
 import java.nio.file.Files
 
+import static Frapid.*
+
 class DigitalSignatureService {
+
+    protected static final String PUBLIC_KEY_FILE_NAME = "public.key"
+    protected static final String PRIVATE_KEY_FILE_NAME = "private.key"
+    protected static final String SHA1WITH_RSA = "SHA1withRSA"
 
     def config, serviceLocator, deployer
 
@@ -27,9 +33,6 @@ class DigitalSignatureService {
     def verifyPack( pack, publicKey = null, signature = null ) {
 
         pack = Paths.get pack
-        println "sig: ${signature.toString()}"
-        println "pkey: ${publicKey.toString()}"
-        println "pack: ${pack.toString()}, exists: ${Files.exists(pack)}"
         if( !signature ) {
             def name = pack.fileName.toString().split('_api')[0]
             
@@ -39,7 +42,7 @@ class DigitalSignatureService {
             Files.deleteIfExists tmpPack
             Files.deleteIfExists tmpSignature
             
-            deployer = serviceLocator.get 'deployer'
+            deployer = serviceLocator.get DEPLOYER
             deployer.unpack pack, config.frapid.tmp
             
             pack = tmpPack
@@ -49,11 +52,11 @@ class DigitalSignatureService {
         
         signature = new File( signature.toString() ).bytes
 
-        def pubKeyPath = Paths.get( config.frapid.keyDir , "public.key")
+        def pubKeyPath = Paths.get( config.frapid.keyDir , PUBLIC_KEY_FILE_NAME)
         if( publicKey ) pubKeyPath = Paths.get( publicKey )
       
         publicKey = getPublicKey pubKeyPath.toFile()
-        def signatureManager = Signature.getInstance("SHA1withRSA");
+        def signatureManager = Signature.getInstance(SHA1WITH_RSA);
         signatureManager.initVerify publicKey
 
         FileInputStream fis = new FileInputStream( pack.toFile() );
@@ -70,8 +73,7 @@ class DigitalSignatureService {
     }
 
     def generateKeys() {
-        def path = config.frapid.home
-	
+
         def keyGen = KeyPairGenerator.getInstance("RSA")
         keyGen.initialize(1024 );
       
@@ -84,8 +86,8 @@ class DigitalSignatureService {
             serviceLocator.fileSystem { createDir keyDir }
         }   
         
-        def pubKeyPath = Paths.get config.frapid.keyDir , "public.key"
-        def privKeyPath = Paths.get config.frapid.keyDir ,"private.key"
+        def pubKeyPath = Paths.get config.frapid.keyDir , PUBLIC_KEY_FILE_NAME
+        def privKeyPath = Paths.get config.frapid.keyDir , PRIVATE_KEY_FILE_NAME
         
         Files.write( pubKeyPath, publicKey.encoded  )
         Files.write( privKeyPath, privateKey.encoded  )

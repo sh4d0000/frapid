@@ -1,12 +1,18 @@
-import java.nio.file.Paths 
+import java.nio.file.Paths
 import java.nio.file.Path 
 import java.nio.file.Files
 
 import groovy.xml.MarkupBuilder
 
+import static Frapid.*
+
 class ScaffolderService {
 
-    def config, serviceLocator, projectManager
+    protected static final String BUSINESS_COMPONENT = "business_component"
+    protected static final String NAMESPACE_PLACEHOLDER = "_namespace_"
+    protected static final String URL_DIRECTIVE = "@frapid-url"
+    protected static final String METHOD_DIRECTIVE = "@frapid-method"
+    def config, serviceLocator
 
     def ScaffolderService() {
 
@@ -18,40 +24,40 @@ class ScaffolderService {
     }
   
 
-    def generate( type, name, projectPath = "." ) {
+    def generate( type, name, projectPath = DEFAULT_PATH ) {
 
-        def projectManager = serviceLocator.get 'projectManager'
+        def projectManager = serviceLocator.get PROJECT_MANAGER
         def projectRoot = projectManager.getProjectRoot projectPath
 
-        def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
+        def app = new XmlSlurper().parse( projectRoot.resolve( CONFIG_DIR_NAME + File.separator + DEPLOY_FILE_NAME ).toString() )
                 
         def templatesDir = Paths.get config.frapid.templates 
-        def componentsDir = projectRoot.resolve( "components" )
+        def componentsDir = projectRoot.resolve( COMPONENTS_DIR_NAME )
         
-        if( type == "business_component" ) {
+        if( type == BUSINESS_COMPONENT) {
 
             def file = serviceLocator.fileSystem { copy( templatesDir, componentsDir, camelize(type) + ".php").toFile() }
             file.write( file.text.replaceAll("_${type}_", name) )
-            file.write( file.text.replaceAll("_namespace_", app.name.toString() ) )
+            file.write( file.text.replaceAll(NAMESPACE_PLACEHOLDER, app.name.toString() ) )
             file.renameTo( componentsDir.toString() + File.separator + "${name}.php" )
                         
         } 
 
     }
 
-    def generateRoutes( projectPath = '.' ) {
+    def generateRoutes( projectPath = DEFAUL_PATH ) {
         
-        def projectManager = serviceLocator.get 'projectManager'
+        def projectManager = serviceLocator.get PROJECT_MANAGER
         def projectRoot = projectManager.getProjectRoot projectPath
         
-        def app = new XmlSlurper().parse( projectRoot.resolve( "config/deploy.xml").toString() )
+        def app = new XmlSlurper().parse( projectRoot.resolve( CONFIG_DIR_NAME + File.separator + DEPLOY_FILE_NAME ).toString() )
         
-        def routesXml = projectRoot.resolve "config/routes.xml"
+        def routesXml = projectRoot.resolve CONFIG_DIR_NAME + File.separator + ROUTES_FILE_NAME
         Files.deleteIfExists routesXml
         
         def routeList = []
         
-        projectRoot.resolve("components").toFile().eachFileMatch( ~/.*\.php/ ) { component ->
+        projectRoot.resolve(COMPONENTS_DIR_NAME).toFile().eachFileMatch( ~/.*\.php/ ) { component ->
 	    def componentName = component.name.split("\\.")[0]
             
             def phpDocOpen = false
@@ -95,10 +101,10 @@ class ScaffolderService {
                 def route = [component:componentName]
                 
                 docBlock.each { line ->
-                    if( line.contains("@frapid-url") ) {
-                        route.url = line.split("@frapid-url")[1].trim()
-                    } else if( line.contains("@frapid-method") ) {
-                        route.httpMethod = line.split("@frapid-method")[1].trim()
+                    if( line.contains(URL_DIRECTIVE) ) {
+                        route.url = line.split(URL_DIRECTIVE)[1].trim()
+                    } else if( line.contains(METHOD_DIRECTIVE) ) {
+                        route.httpMethod = line.split(METHOD_DIRECTIVE)[1].trim()
                     }
                 }
                 

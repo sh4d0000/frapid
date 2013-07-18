@@ -17,7 +17,7 @@ class Frapid {
     protected static final String SCAFFOLDER = 'scaffolder'
     protected static final String DIGITAL_SIGNATURE = 'digitalSignature'
     protected static final String COMPONENTS_DIR_NAME = 'components'
-    protected static final String RUOTES_FILE_NAME = 'routes.xml'
+    protected static final String ROUTES_FILE_NAME = 'routes.xml'
     protected static final String CONFIG_FILE_NAME = 'config.xml'
     protected static final String LIB_DIR_NAME = 'lib'
     protected static final String CONFIG_DIR_NAME = 'config'

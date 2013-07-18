@@ -44,7 +44,7 @@ class DeployerService {
             deployDir = createDir(config.envs."$environment".frapi.frapid + File.separator + app.name)
             def componentsDeploy = createDir(deployDir.resolve(COMPONENTS_DIR_NAME))
 
-            copy configDir, deployDir, RUOTES_FILE_NAME, CONFIG_FILE_NAME
+            copy configDir, deployDir, ROUTES_FILE_NAME, CONFIG_FILE_NAME
             def libDeploy = createDir deployDir.resolve(LIB_DIR_NAME)
             def modelDeploy = createDir deployDir.resolve(MODEL_DIR_NAME)
 

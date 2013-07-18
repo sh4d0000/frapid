@@ -9,6 +9,8 @@ import javax.xml.transform.Transformer
 import javax.xml.transform.TransformerFactory
 import javax.xml.transform.OutputKeys
 
+import static Frapid.*
+
 class ProjectManager {
 
     protected static final String DEFAULT_COMPONENT_NAME = 'SampleComponent'
